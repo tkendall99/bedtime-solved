@@ -1,5 +1,4 @@
 import NextImage from "next/image";
-import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Image, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,37 +60,25 @@ export function Preview() {
                 </div>
               )}
 
-              {/* Other cards - fixed aspect ratio with centered content */}
-              {index !== 0 && (
+              {/* Illustrated pages - image determines height */}
+              {index === 1 && (
+                <div className="relative w-full">
+                  <NextImage
+                    src="/images/examples/illustrated-pages-example.png"
+                    alt="Example illustrated pages spread"
+                    width={800}
+                    height={1200}
+                    className="w-full h-auto"
+                    sizes="(max-width: 768px) 100vw, 400px"
+                  />
+                </div>
+              )}
+
+              {/* Download card - fixed aspect ratio with centered content */}
+              {index === 2 && (
                 <div className="relative aspect-[4/5] flex items-center justify-center bg-gradient-to-br from-secondary via-muted/50 to-secondary p-6">
                   <div className="absolute inset-0 paper-texture opacity-50" />
 
-                {index === 1 && (
-                  <div className="relative w-full max-w-[200px] flex gap-1">
-                    {/* Left page */}
-                    <div className="flex-1 aspect-[3/4] bg-card rounded-l-sm shadow-lg border border-border overflow-hidden">
-                      <div className="p-2 h-full flex flex-col">
-                        <Skeleton className="w-full h-[55%] rounded bg-accent/20 mb-2" />
-                        <Skeleton className="w-full h-2 rounded-full bg-foreground/15 mb-1" />
-                        <Skeleton className="w-full h-2 rounded-full bg-foreground/15 mb-1" />
-                        <Skeleton className="w-3/4 h-2 rounded-full bg-foreground/15" />
-                      </div>
-                    </div>
-                    {/* Right page */}
-                    <div className="flex-1 aspect-[3/4] bg-card rounded-r-sm shadow-lg border border-border overflow-hidden">
-                      <div className="p-2 h-full flex flex-col">
-                        <Skeleton className="w-full h-2 rounded-full bg-foreground/15 mb-1" />
-                        <Skeleton className="w-full h-2 rounded-full bg-foreground/15 mb-1" />
-                        <Skeleton className="w-2/3 h-2 rounded-full bg-foreground/15 mb-2" />
-                        <Skeleton className="w-full flex-1 rounded bg-primary/20" />
-                      </div>
-                    </div>
-                    {/* Book binding */}
-                    <div className="absolute left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-gradient-to-r from-black/5 via-black/10 to-black/5" />
-                  </div>
-                )}
-
-                {index === 2 && (
                   <div className="relative flex flex-col items-center gap-3">
                     {/* PDF icon */}
                     <div className="w-20 h-24 bg-card rounded-lg shadow-lg border border-border flex items-center justify-center">
@@ -105,13 +92,12 @@ export function Preview() {
                       <div className="h-full w-3/4 bg-gradient-to-r from-primary to-accent rounded-full" />
                     </div>
                   </div>
-                )}
 
-                {/* Decorative corner */}
-                <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
-                  <card.icon className="w-full h-full text-primary" />
+                  {/* Decorative corner */}
+                  <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
+                    <card.icon className="w-full h-full text-primary" />
+                  </div>
                 </div>
-              </div>
               )}
 
               {/* Card content */}
