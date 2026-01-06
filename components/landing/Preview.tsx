@@ -47,26 +47,24 @@ export function Preview() {
                 "transition-all duration-300",
               )}
             >
-              {/* Mock book preview area */}
-              <div className={cn(
-                "relative aspect-[4/5] flex items-center justify-center",
-                index === 0 ? "" : "bg-gradient-to-br from-secondary via-muted/50 to-secondary p-6"
-              )}>
-                {/* Paper texture effect - only for non-cover cards */}
-                {index !== 0 && <div className="absolute inset-0 paper-texture opacity-50" />}
+              {/* Cover card - image determines height */}
+              {index === 0 && (
+                <div className="relative w-full">
+                  <NextImage
+                    src="/images/examples/milos-dino-dreamland.png"
+                    alt="Example storybook cover - Milo's Dino Dreamland"
+                    width={800}
+                    height={1200}
+                    className="w-full h-auto"
+                    sizes="(max-width: 768px) 100vw, 400px"
+                  />
+                </div>
+              )}
 
-                {/* Book cover with real image - fills entire area */}
-                {index === 0 && (
-                  <div className="absolute inset-0 overflow-hidden">
-                    <NextImage
-                      src="/images/examples/milos-dino-dreamland.png"
-                      alt="Example storybook cover - Milo's Dino Dreamland"
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 400px"
-                    />
-                  </div>
-                )}
+              {/* Other cards - fixed aspect ratio with centered content */}
+              {index !== 0 && (
+                <div className="relative aspect-[4/5] flex items-center justify-center bg-gradient-to-br from-secondary via-muted/50 to-secondary p-6">
+                  <div className="absolute inset-0 paper-texture opacity-50" />
 
                 {index === 1 && (
                   <div className="relative w-full max-w-[200px] flex gap-1">
@@ -109,13 +107,12 @@ export function Preview() {
                   </div>
                 )}
 
-                {/* Decorative corner - hidden for cover since image fills area */}
-                {index !== 0 && (
-                  <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
-                    <card.icon className="w-full h-full text-primary" />
-                  </div>
-                )}
+                {/* Decorative corner */}
+                <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
+                  <card.icon className="w-full h-full text-primary" />
+                </div>
               </div>
+              )}
 
               {/* Card content */}
               <div className="p-5">
