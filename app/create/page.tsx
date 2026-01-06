@@ -1,38 +1,41 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { CreateBookForm } from "@/components/create/CreateBookForm";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function CreatePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
-      {/* Background gradient */}
-      <div className="absolute inset-0 gradient-warm -z-10" />
+    <>
+      <Toaster position="top-center" />
+      <main className="min-h-screen">
+        {/* Background gradient */}
+        <div className="fixed inset-0 gradient-warm -z-10" />
 
-      <div className="text-center max-w-md">
-        {/* Icon */}
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-float">
-          <Sparkles className="w-10 h-10 text-primary" />
+        {/* Header */}
+        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b">
+          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+            <Button asChild variant="ghost" size="icon" className="shrink-0">
+              <Link href="/" aria-label="Back to home">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+            </Button>
+            <div>
+              <h1 className="font-[family-name:var(--font-fraunces)] text-xl font-semibold">
+                Create Your Storybook
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Tell us about your child
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* Form */}
+        <div className="max-w-2xl mx-auto px-4 py-8 pb-24">
+          <CreateBookForm />
         </div>
-
-        {/* Headline */}
-        <h1 className="font-[family-name:var(--font-fraunces)] text-3xl sm:text-4xl font-semibold mb-4">
-          Coming Soon
-        </h1>
-
-        {/* Description */}
-        <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-          We&apos;re putting the finishing touches on our storybook creator.
-          Check back soon to create your child&apos;s personalized adventure!
-        </p>
-
-        {/* Back button */}
-        <Button asChild variant="outline" size="lg" className="rounded-full">
-          <Link href="/">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Link>
-        </Button>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

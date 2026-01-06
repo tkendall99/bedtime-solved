@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.2.0] - 2026-01-06
+
+### Added - Create Book Flow (Step 1) — `/create` Page UI + Validation
+
+**Issue:** #3 - Build /create Page UI + Validation (No Backend)
+
+#### Features
+- Complete book creation form with client-side validation
+- Child details section (name, age band, interests multi-select)
+- Story preferences section (tone radio cards, optional lesson textarea)
+- Photo upload with drag & drop support, preview, and replace functionality
+- Form persistence via sessionStorage (auto-save on change)
+- Sticky submit button on mobile for better UX
+- Form state preserved across page refreshes (except photo)
+
+#### Validation Rules (Zod)
+- Child name: 2-32 chars, letters/spaces/hyphens/apostrophes only
+- Age band: required selection (3-4, 5-6, 7-9)
+- Interests: 1-3 selections from presets or custom entries
+- Tone: required selection (gentle, funny, brave)
+- Lesson: optional, max 140 characters
+- Photo: required, JPG/PNG/WebP only, max 8MB
+
+#### Components Created
+- `components/create/CreateBookForm.tsx` - Main form orchestrating all fields
+- `components/create/InterestsInput.tsx` - Multi-select tag input with custom entry
+- `components/create/PhotoDropzone.tsx` - Drag & drop photo upload with preview
+
+#### Library Files Created
+- `lib/constants/storyOptions.ts` - Centralized constants (age bands, tones, interests, photo config)
+- `lib/validators/createBook.ts` - Zod schema + TypeScript types
+
+#### Pages
+- `app/create/page.tsx` - Fully functional create book form
+- `app/create/preview/page.tsx` - Placeholder for next step
+
 ## [0.1.0] - 2026-01-06
 
 ### Added - Landing Page UI (v1)
