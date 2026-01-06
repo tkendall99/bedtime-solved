@@ -48,24 +48,23 @@ export function Preview() {
               )}
             >
               {/* Mock book preview area */}
-              <div className="relative aspect-[4/5] bg-gradient-to-br from-secondary via-muted/50 to-secondary p-6 flex items-center justify-center">
-                {/* Paper texture effect */}
-                <div className="absolute inset-0 paper-texture opacity-50" />
+              <div className={cn(
+                "relative aspect-[4/5] flex items-center justify-center",
+                index === 0 ? "" : "bg-gradient-to-br from-secondary via-muted/50 to-secondary p-6"
+              )}>
+                {/* Paper texture effect - only for non-cover cards */}
+                {index !== 0 && <div className="absolute inset-0 paper-texture opacity-50" />}
 
-                {/* Book cover with real image */}
+                {/* Book cover with real image - fills entire area */}
                 {index === 0 && (
-                  <div className="relative w-[70%] max-w-[220px] aspect-[3/4] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden group-hover:shadow-primary/30 group-hover:scale-105 transition-all duration-300">
+                  <div className="absolute inset-0 overflow-hidden">
                     <NextImage
                       src="/images/examples/milos-dino-dreamland.png"
                       alt="Example storybook cover - Milo's Dino Dreamland"
                       fill
                       className="object-cover"
-                      sizes="220px"
+                      sizes="(max-width: 768px) 100vw, 400px"
                     />
-                    {/* Book spine shadow */}
-                    <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/20 to-transparent" />
-                    {/* Subtle shine effect */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
                   </div>
                 )}
 
@@ -110,10 +109,12 @@ export function Preview() {
                   </div>
                 )}
 
-                {/* Decorative corner */}
-                <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
-                  <card.icon className="w-full h-full text-primary" />
-                </div>
+                {/* Decorative corner - hidden for cover since image fills area */}
+                {index !== 0 && (
+                  <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
+                    <card.icon className="w-full h-full text-primary" />
+                  </div>
+                )}
               </div>
 
               {/* Card content */}
