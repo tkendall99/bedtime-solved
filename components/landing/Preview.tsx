@@ -1,3 +1,4 @@
+import NextImage from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Image, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,17 +52,20 @@ export function Preview() {
                 {/* Paper texture effect */}
                 <div className="absolute inset-0 paper-texture opacity-50" />
 
-                {/* Book mockup skeleton */}
+                {/* Book cover with real image */}
                 {index === 0 && (
-                  <div className="relative w-full max-w-[140px] aspect-[3/4] bg-card rounded-lg shadow-lg border border-border overflow-hidden">
-                    {/* Cover design skeleton */}
-                    <div className="absolute inset-0 p-3 flex flex-col">
-                      <Skeleton className="w-full h-[60%] rounded-md mb-2 bg-primary/20" />
-                      <Skeleton className="w-3/4 h-3 rounded-full bg-foreground/20 mx-auto mb-1" />
-                      <Skeleton className="w-1/2 h-2 rounded-full bg-muted-foreground/20 mx-auto" />
-                    </div>
+                  <div className="relative w-full max-w-[160px] aspect-[3/4] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden group-hover:shadow-primary/30 transition-shadow duration-300">
+                    <NextImage
+                      src="/images/examples/milos-dino-dreamland.png"
+                      alt="Example storybook cover - Milo's Dino Dreamland"
+                      fill
+                      className="object-cover"
+                      sizes="160px"
+                    />
                     {/* Book spine shadow */}
-                    <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-black/10 to-transparent" />
+                    <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/20 to-transparent" />
+                    {/* Subtle shine effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
                   </div>
                 )}
 
