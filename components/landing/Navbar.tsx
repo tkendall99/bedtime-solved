@@ -72,9 +72,7 @@ export function Navbar() {
           <span
             className={cn(
               "font-[family-name:var(--font-fraunces)] font-semibold tracking-tight transition-all duration-500",
-              scrolled ? "text-base" : "text-lg",
-              // Hide text on very small screens when scrolled to keep it compact
-              scrolled ? "hidden xs:block" : "block"
+              scrolled ? "text-sm sm:text-base" : "text-lg"
             )}
           >
             Bedtime. Solved.
@@ -88,7 +86,7 @@ export function Navbar() {
           className={cn(
             "transition-all duration-500 rounded-full",
             scrolled
-              ? "px-4 shadow-md shadow-primary/20"
+              ? "px-3 sm:px-4 shadow-md shadow-primary/20"
               : "px-5 shadow-lg shadow-primary/25"
           )}
         >
@@ -96,14 +94,11 @@ export function Navbar() {
             <Sparkles
               className={cn(
                 "transition-all duration-500",
-                scrolled ? "w-3.5 h-3.5 mr-1.5" : "w-4 h-4 mr-2"
+                scrolled ? "w-4 h-4 sm:w-3.5 sm:h-3.5 sm:mr-1.5" : "w-4 h-4 mr-2"
               )}
             />
             <span className={cn(scrolled ? "hidden sm:inline" : "inline")}>
               Create a Storybook
-            </span>
-            <span className={cn(scrolled ? "inline sm:hidden" : "hidden")}>
-              Create
             </span>
           </Link>
         </Button>
