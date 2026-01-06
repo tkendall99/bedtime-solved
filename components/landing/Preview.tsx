@@ -1,5 +1,5 @@
 import NextImage from "next/image";
-import { BookOpen, Image, Download } from "lucide-react";
+import { BookOpen, Image as ImageIcon, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const previewCards = [
@@ -9,7 +9,7 @@ const previewCards = [
     description: "Your child's name and likeness on a beautiful illustrated cover",
   },
   {
-    icon: Image,
+    icon: ImageIcon,
     title: "Illustrated Pages",
     description: "8-10 pages of adventure with your child as the hero",
   },
@@ -74,29 +74,17 @@ export function Preview() {
                 </div>
               )}
 
-              {/* Download card - fixed aspect ratio with centered content */}
+              {/* PDF download - image determines height */}
               {index === 2 && (
-                <div className="relative aspect-[4/5] flex items-center justify-center bg-gradient-to-br from-secondary via-muted/50 to-secondary p-6">
-                  <div className="absolute inset-0 paper-texture opacity-50" />
-
-                  <div className="relative flex flex-col items-center gap-3">
-                    {/* PDF icon */}
-                    <div className="w-20 h-24 bg-card rounded-lg shadow-lg border border-border flex items-center justify-center">
-                      <div className="text-center">
-                        <Download className="w-8 h-8 text-accent mx-auto mb-1" />
-                        <span className="text-[10px] font-medium text-muted-foreground">.PDF</span>
-                      </div>
-                    </div>
-                    {/* Download progress hint */}
-                    <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full w-3/4 bg-gradient-to-r from-primary to-accent rounded-full" />
-                    </div>
-                  </div>
-
-                  {/* Decorative corner */}
-                  <div className="absolute top-3 right-3 w-8 h-8 opacity-30">
-                    <card.icon className="w-full h-full text-primary" />
-                  </div>
+                <div className="relative w-full">
+                  <NextImage
+                    src="/images/examples/generate-pdf.png"
+                    alt="Example PDF download"
+                    width={800}
+                    height={1200}
+                    className="w-full h-auto"
+                    sizes="(max-width: 768px) 100vw, 400px"
+                  />
                 </div>
               )}
 
