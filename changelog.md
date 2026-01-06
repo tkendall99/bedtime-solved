@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.3.0] - 2026-01-06
+
+### Added - Create Book Flow (Backend) — API + Photo Upload + Job Queue
+
+**Issue:** #5 - Create Book Flow - Backend "Create Book" API + Photo Upload + Job Queue (Supabase)
+
+#### Database Schema
+- `books` table: Main entity storing child details, story preferences, photo path, status
+- `book_pages` table: Stores generated pages (cover, content, back) for each book
+- `book_jobs` table: Tracks async generation jobs with step-by-step progress
+- All tables have RLS enabled (no public access, server-only via service role)
+
+#### Storage Buckets (Private)
+- `uploads` - Source photos from users (`{book_id}/source.{ext}`)
+- `images` - AI-generated illustrations
+- `pdfs` - Final PDF files
+
+#### API Endpoints
+- `POST /api/books` - Creates book record, uploads photo to storage, queues generation job
+- `GET /api/books/[id]` - Returns book status for polling (does not expose storage paths)
+
+#### Server Infrastructure
+- `lib/supabase/admin.ts` - Admin client with service role key (server-only)
+- `lib/types/database.ts` - TypeScript types for DB tables and API responses
+- `lib/constants/bookStatus.ts` - Status constants and helper functions
+- `lib/validators/createBookApi.ts` - Server-side Zod validation + photo validation
+
+#### Frontend Updates
+- `CreateBookForm.tsx` - Now calls POST /api/books with multipart FormData
+- `GeneratingStepper.tsx` - New component showing generation progress steps
+- `/create/preview` - Polls book status, shows generating stepper, handles errors
+
+#### Error Handling
+- Photo upload failures mark book as failed with error message
+- Job creation failures mark book as failed
+- Preview page shows error state with retry option
+
 ## [0.2.0] - 2026-01-06
 
 ### Added - Create Book Flow (Step 1) — `/create` Page UI + Validation

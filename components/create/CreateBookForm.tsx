@@ -97,32 +97,40 @@ export function CreateBookForm() {
     setIsSubmitting(true);
 
     try {
-      // Convert photo to dataURL for storage persistence
-      const reader = new FileReader();
-      reader.onload = () => {
-        const formDataWithPhoto = {
-          childName: data.childName,
-          ageBand: data.ageBand,
-          interests: data.interests,
-          tone: data.tone,
-          lesson: data.lesson,
-          photoDataUrl: reader.result as string,
-          photoName: data.photo.name,
-          photoType: data.photo.type,
-        };
-        sessionStorage.setItem(
-          "createBookFormComplete",
-          JSON.stringify(formDataWithPhoto)
-        );
-        router.push("/create/preview");
-      };
-      reader.onerror = () => {
-        toast.error("Failed to process photo. Please try again.");
-        setIsSubmitting(false);
-      };
-      reader.readAsDataURL(data.photo);
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+      // Build FormData for multipart upload
+      const formData = new FormData();
+      formData.append("child_name", data.childName);
+      formData.append("age_band", data.ageBand);
+      formData.append("interests", JSON.stringify(data.interests));
+      formData.append("tone", data.tone);
+      if (data.lesson) {
+        formData.append("moral_lesson", data.lesson);
+      }
+      formData.append("photo", data.photo);
+
+      // Call API
+      const response = await fetch("/api/books", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create book");
+      }
+
+      const { bookId } = await response.json();
+
+      // Clear session storage
+      sessionStorage.removeItem(STORAGE_KEY);
+
+      // Navigate to preview with bookId
+      router.push(`/create/preview?bookId=${bookId}`);
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong. Please try again."
+      );
       setIsSubmitting(false);
     }
   };
