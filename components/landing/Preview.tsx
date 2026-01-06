@@ -54,13 +54,13 @@ export function Preview() {
 
                 {/* Book cover with real image */}
                 {index === 0 && (
-                  <div className="relative w-full max-w-[160px] aspect-[3/4] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden group-hover:shadow-primary/30 transition-shadow duration-300">
+                  <div className="relative w-[70%] max-w-[220px] aspect-[3/4] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden group-hover:shadow-primary/30 group-hover:scale-105 transition-all duration-300">
                     <NextImage
                       src="/images/examples/milos-dino-dreamland.png"
                       alt="Example storybook cover - Milo's Dino Dreamland"
                       fill
                       className="object-cover"
-                      sizes="160px"
+                      sizes="220px"
                     />
                     {/* Book spine shadow */}
                     <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/20 to-transparent" />
