@@ -43,7 +43,8 @@ export interface ImageGenerationResponse {
   choices: Array<{
     message: {
       role: string;
-      content: Array<{
+      content?: string;
+      images?: Array<{
         type: "image_url";
         image_url: { url: string }; // base64 data URL
       }>;
@@ -248,13 +249,14 @@ export async function generateImage(
     }
   );
 
-  // Extract the image from the response
-  const imageContent = response.choices[0]?.message?.content;
-  if (!imageContent || !Array.isArray(imageContent) || imageContent.length === 0) {
+  // Extract the image from the response (images are in message.images, not message.content)
+  const images = response.choices[0]?.message?.images;
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    console.error("[OpenRouter] Response structure:", JSON.stringify(response, null, 2));
     throw new OpenRouterError("No image in response", 500, false);
   }
 
-  const imageUrl = imageContent[0]?.image_url?.url;
+  const imageUrl = images[0]?.image_url?.url;
   if (!imageUrl) {
     throw new OpenRouterError("No image URL in response", 500, false);
   }
