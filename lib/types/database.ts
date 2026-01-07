@@ -61,6 +61,8 @@ export interface Book {
   tone: Tone;
   moral_lesson: string | null;
   source_photo_path: string | null;
+  character_sheet_path: string | null;
+  cover_image_path: string | null;
   status: BookStatus;
   error_message: string | null;
   created_at: string;
@@ -105,11 +107,18 @@ export interface CreateBookInput {
   moral_lesson?: string;
 }
 
+export interface BookPreview {
+  coverUrl: string;
+  page1ImageUrl: string;
+  page1Text: string;
+}
+
 export interface BookStatusResponse {
   bookId: string;
   status: BookStatus;
   errorMessage: string | null;
   createdAt: string;
+  preview?: BookPreview;
 }
 
 export interface CreateBookResponse {

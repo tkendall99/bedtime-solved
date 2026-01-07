@@ -1,22 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { BookStatusResponse, ApiError } from "@/lib/types/database";
+import type { BookStatusResponse, ApiError, BookPreview } from "@/lib/types/database";
 
 // UUID validation regex
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Signed URL expiry time (1 hour)
+const SIGNED_URL_EXPIRY = 3600;
+
+// Statuses that should include preview data
+const PREVIEW_STATUSES = ["preview_ready", "paid", "completed"];
+
 /**
  * GET /api/books/[id]
  *
  * Returns the status of a book for polling.
- * Does NOT return storage paths or other sensitive data.
+ * When status is preview_ready or later, includes signed URLs for preview assets.
  *
  * Response: {
  *   bookId: string,
  *   status: BookStatus,
  *   errorMessage: string | null,
- *   createdAt: string
+ *   createdAt: string,
+ *   preview?: {
+ *     coverUrl: string,
+ *     page1ImageUrl: string,
+ *     page1Text: string
+ *   }
  * }
  */
 export async function GET(
@@ -34,7 +45,7 @@ export async function GET(
 
   const { data: book, error } = await supabase
     .from("books")
-    .select("id, status, error_message, created_at")
+    .select("id, status, error_message, created_at, cover_image_path")
     .eq("id", id)
     .single();
 
@@ -51,12 +62,82 @@ export async function GET(
     return NextResponse.json({ error: "Book not found" }, { status: 404 });
   }
 
-  // Return safe public fields only
-  // DO NOT return source_photo_path or other sensitive fields
-  return NextResponse.json({
+  // Build base response (safe public fields only)
+  const response: BookStatusResponse = {
     bookId: book.id,
     status: book.status,
     errorMessage: book.error_message,
     createdAt: book.created_at,
-  });
+  };
+
+  // Include preview data if status warrants it
+  if (PREVIEW_STATUSES.includes(book.status)) {
+    const preview = await getPreviewData(supabase, id, book.cover_image_path);
+    if (preview) {
+      response.preview = preview;
+    }
+  }
+
+  return NextResponse.json(response);
+}
+
+/**
+ * Fetch preview data and generate signed URLs.
+ */
+async function getPreviewData(
+  supabase: ReturnType<typeof createAdminClient>,
+  bookId: string,
+  coverImagePath: string | null
+): Promise<BookPreview | null> {
+  try {
+    // Fetch page 1 data
+    const { data: page1, error: page1Error } = await supabase
+      .from("book_pages")
+      .select("story_text, illustration_path")
+      .eq("book_id", bookId)
+      .eq("page_number", 1)
+      .single();
+
+    if (page1Error || !page1) {
+      console.error("Error fetching page 1:", page1Error);
+      return null;
+    }
+
+    // Generate signed URLs for images
+    const [coverUrlResult, page1ImageResult] = await Promise.all([
+      coverImagePath
+        ? supabase.storage
+            .from("images")
+            .createSignedUrl(coverImagePath, SIGNED_URL_EXPIRY)
+        : Promise.resolve({ data: null, error: null }),
+      page1.illustration_path
+        ? supabase.storage
+            .from("images")
+            .createSignedUrl(page1.illustration_path, SIGNED_URL_EXPIRY)
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    // Ensure we have all required data
+    if (
+      !coverUrlResult.data?.signedUrl ||
+      !page1ImageResult.data?.signedUrl ||
+      !page1.story_text
+    ) {
+      console.error("Missing preview data:", {
+        hasCoverUrl: !!coverUrlResult.data?.signedUrl,
+        hasPage1ImageUrl: !!page1ImageResult.data?.signedUrl,
+        hasStoryText: !!page1.story_text,
+      });
+      return null;
+    }
+
+    return {
+      coverUrl: coverUrlResult.data.signedUrl,
+      page1ImageUrl: page1ImageResult.data.signedUrl,
+      page1Text: page1.story_text,
+    };
+  } catch (error) {
+    console.error("Error generating preview data:", error);
+    return null;
+  }
 }

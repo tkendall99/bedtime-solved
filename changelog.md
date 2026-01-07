@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.4.0] - 2026-01-07
+
+### Added - Generation Worker v1 (Character Sheet + Preview Cover/Page1)
+
+**Issue:** #7 - Create Book Flow - Generation Worker v1 (Character Sheet + Preview Cover/Page1)
+
+#### AI Integration
+- `lib/ai/openrouter.ts` - Shared OpenRouter HTTP client with retry logic and error handling
+- `lib/ai/story.ts` - Story text generation using `xiaomi/mimo-v2-flash:free`
+- `lib/ai/images.ts` - Image generation using `bytedance-seed/seedream-4.5` (supports img2img)
+- Age-appropriate prompts for story generation (3-4, 5-6, 7-9 age bands)
+- Character sheet generation from uploaded photo for likeness consistency
+- Cover and page illustration generation with character reference
+
+#### Job Processing
+- `server/jobs/processNextJob.ts` - Core job processor logic
+- Claims queued jobs with optimistic locking to prevent concurrent processing
+- Step-by-step generation: character sheet -> page 1 story -> cover + page 1 images
+- Automatic retry on failure (up to 3 attempts)
+- Error tracking and status updates throughout pipeline
+
+#### API Endpoints
+- `POST /api/admin/jobs/process-next` - Admin endpoint to manually trigger job processing
+- `GET /api/books/[id]` - Updated to include signed URLs for preview assets when ready
+
+#### Database Updates
+- Added `character_sheet_path` column to `books` table
+- Added `cover_image_path` column to `books` table
+
+#### Type Updates
+- Added `BookPreview` interface for preview data
+- Extended `BookStatusResponse` to include optional `preview` field
+- Updated `Book` interface with new path columns
+
+#### Storage
+- Character sheets stored in `uploads/{book_id}/character_sheet.png`
+- Cover images stored in `images/{book_id}/cover.png`
+- Page illustrations stored in `images/{book_id}/page_01.png`
+- Signed URLs with 1-hour expiry for secure access
+
+#### Housekeeping
+- Removed duplicate files (*.2.ts, *.2.tsx) that were cluttering the repo
+
 ## [0.3.0] - 2026-01-06
 
 ### Added - Create Book Flow (Backend) — API + Photo Upload + Job Queue
