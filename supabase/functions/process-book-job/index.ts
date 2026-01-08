@@ -402,7 +402,7 @@ async function processJob(jobId: string) {
         // Update existing row
         await supabase
           .from("book_pages")
-          .update({ text_content: page1Text })
+          .update({ story_text: page1Text })
           .eq("id", existingPage.id);
         console.log(`[Job ${jobId}] Updated existing page 1`);
       } else {
@@ -410,7 +410,7 @@ async function processJob(jobId: string) {
         await supabase.from("book_pages").insert({
           book_id: book.id,
           page_number: 1,
-          text_content: page1Text,
+          story_text: page1Text,
           page_type: "content",
         });
         console.log(`[Job ${jobId}] Inserted new page 1`);
@@ -476,12 +476,12 @@ Use the reference to maintain the child's likeness.`;
       // Fetch page 1 text for context
       const { data: page1 } = await supabase
         .from("book_pages")
-        .select("text_content")
+        .select("story_text")
         .eq("book_id", book.id)
         .eq("page_number", 1)
         .single();
 
-      const page1Text = page1?.text_content || "";
+      const page1Text = page1?.story_text || "";
 
       const page1Prompt = `Children's storybook interior illustration.
 Story context: "${page1Text}"
@@ -501,7 +501,7 @@ Soft, warm lighting suitable for bedtime reading.`;
       // Update page 1 with image path
       await supabase
         .from("book_pages")
-        .update({ image_path: page1ImagePath })
+        .update({ illustration_path: page1ImagePath })
         .eq("book_id", book.id)
         .eq("page_number", 1);
 

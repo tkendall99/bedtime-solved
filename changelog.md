@@ -10,9 +10,16 @@
 - API was using `text_content`, `image_path` (wrong)
 - Schema has `story_text`, `illustration_path` (correct)
 
-**Fix:** Reverted to correct column names in `app/api/books/[id]/route.ts`:
+**Fix:** Corrected column names in two places:
+
+1. `app/api/books/[id]/route.ts` (API route)
+2. `supabase/functions/process-book-job/index.ts` (Edge Function)
+
+Changes:
 - `text_content` → `story_text`
 - `image_path` → `illustration_path`
+
+The Edge Function bug caused pages to not be inserted (wrong column names, errors not checked).
 
 ---
 
