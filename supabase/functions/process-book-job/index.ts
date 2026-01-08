@@ -389,13 +389,32 @@ async function processJob(jobId: string) {
         .update({ title })
         .eq("id", book.id);
 
-      // Insert page 1 text
-      await supabase.from("book_pages").upsert({
-        book_id: book.id,
-        page_number: 1,
-        text_content: page1Text,
-        page_type: "content",
-      });
+      // Insert or update page 1 text
+      // First try to get existing row
+      const { data: existingPage } = await supabase
+        .from("book_pages")
+        .select("id")
+        .eq("book_id", book.id)
+        .eq("page_number", 1)
+        .single();
+
+      if (existingPage) {
+        // Update existing row
+        await supabase
+          .from("book_pages")
+          .update({ text_content: page1Text })
+          .eq("id", existingPage.id);
+        console.log(`[Job ${jobId}] Updated existing page 1`);
+      } else {
+        // Insert new row
+        await supabase.from("book_pages").insert({
+          book_id: book.id,
+          page_number: 1,
+          text_content: page1Text,
+          page_type: "content",
+        });
+        console.log(`[Job ${jobId}] Inserted new page 1`);
+      }
 
       // Move to next step and return - next invocation will continue
       await supabase

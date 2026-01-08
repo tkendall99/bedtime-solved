@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.4] - 2026-01-08
+
+### Fixed - Page Data Insert/Update Logic
+
+**Issue:** The upsert for book_pages didn't handle existing rows correctly, potentially causing missing data.
+
+**Fix:** Changed from `upsert` to explicit check-then-insert/update pattern:
+- Check if page exists by (book_id, page_number)
+- Update if exists, insert if not
+- More reliable for retry scenarios
+
+---
+
 ## [0.5.3] - 2026-01-08
 
 ### Fixed - JSON Parse Error in Story Generation
