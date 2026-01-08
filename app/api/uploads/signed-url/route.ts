@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { v4 as uuidv4 } from "uuid";
+
+/**
+ * POST /api/uploads/signed-url
+ *
+ * Creates a signed URL for direct client-side upload to Supabase Storage.
+ * This bypasses the 4.5MB Vercel body size limit.
+ *
+ * Request: { fileType: string, fileExtension: string }
+ * Response: { signedUrl: string, path: string, bookId: string }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { fileType, fileExtension } = body;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(fileType)) {
+      return NextResponse.json(
+        { error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." },
+        { status: 400 }
+      );
+    }
+
+    // Generate a unique book ID for this upload
+    const bookId = uuidv4();
+    const ext = fileExtension?.toLowerCase() || "jpg";
+    const path = `${bookId}/source.${ext}`;
+
+    const supabase = createAdminClient();
+
+    // Create signed URL for upload (valid for 5 minutes)
+    const { data, error } = await supabase.storage
+      .from("uploads")
+      .createSignedUploadUrl(path);
+
+    if (error) {
+      console.error("Failed to create signed URL:", error);
+      return NextResponse.json(
+        { error: "Failed to create upload URL" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      signedUrl: data.signedUrl,
+      path,
+      bookId,
+      token: data.token,
+    });
+  } catch (error) {
+    console.error("Error in signed-url endpoint:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

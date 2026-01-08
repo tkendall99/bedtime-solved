@@ -8,7 +8,8 @@ import { ArrowLeft, AlertCircle, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { GeneratingStepper } from "@/components/create/GeneratingStepper";
-import type { BookStatus, BookStatusResponse } from "@/lib/types/database";
+import type { BookStatus, BookStatusResponse, BookPreview } from "@/lib/types/database";
+import { BookPreviewCard } from "@/components/create/BookPreviewCard";
 
 const POLL_INTERVAL_MS = 2000; // 2 seconds
 
@@ -21,6 +22,7 @@ function PreviewContent() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<BookPreview | null>(null);
 
   // Redirect to /create if no bookId
   React.useEffect(() => {
@@ -54,6 +56,9 @@ function PreviewContent() {
           setErrorMessage(data.errorMessage);
           setIsLoading(false);
           setFetchError(null);
+          if (data.preview) {
+            setPreview(data.preview);
+          }
         }
 
         // Stop polling if we've reached a terminal state
@@ -177,34 +182,53 @@ function PreviewContent() {
     );
   }
 
-  // Preview ready / completed status (show mock preview for now)
+  // Preview ready / completed status
   if (status === "preview_ready" || status === "completed" || status === "paid") {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+      <main className="min-h-screen flex flex-col items-center px-4 py-8 md:py-16">
         <div className="absolute inset-0 gradient-warm -z-10" />
-        <Card className="max-w-md w-full paper-texture">
-          <CardContent className="pt-8 pb-6 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-float">
-              <Sparkles className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="font-[family-name:var(--font-fraunces)] text-2xl font-semibold mb-3">
-              Preview Ready!
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              Your storybook preview is ready. The full preview experience with
-              cover art and story pages is coming in the next update.
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Book ID: {bookId}
-            </p>
-            <Button asChild variant="outline" className="rounded-full">
-              <Link href="/create">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Create Another
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+
+        {preview ? (
+          <BookPreviewCard
+            preview={preview}
+            onContinue={() => {
+              // TODO: Navigate to checkout (future issue)
+              console.log("Continue to checkout for book:", bookId);
+            }}
+          />
+        ) : (
+          // Fallback if preview data is missing
+          <Card className="max-w-md w-full paper-texture">
+            <CardContent className="pt-8 pb-6 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-float">
+                <Sparkles className="w-10 h-10 text-primary" />
+              </div>
+              <h1 className="font-[family-name:var(--font-fraunces)] text-2xl font-semibold mb-3">
+                Preview Ready!
+              </h1>
+              <p className="text-muted-foreground mb-6">
+                Your storybook is ready, but we couldn&apos;t load the preview images.
+                Please try refreshing the page.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.reload()}
+                  className="rounded-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+                <Button asChild variant="default" className="rounded-full">
+                  <Link href="/create">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Create Another
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     );
   }

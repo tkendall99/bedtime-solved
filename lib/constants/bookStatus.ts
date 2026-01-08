@@ -27,10 +27,10 @@ export const JOB_STATUS = {
 
 export const JOB_STEP = {
   CHARACTER_SHEET: "character_sheet",
-  STORY_OUTLINE: "story_outline",
-  PAGE_CONTENT: "page_content",
-  ILLUSTRATIONS: "illustrations",
-  PDF_GENERATION: "pdf_generation",
+  PAGE1_TEXT: "page1_text",
+  COVER_IMAGE: "cover_image",
+  PAGE1_IMAGE: "page1_image",
+  COMPLETE: "complete",
 } as const satisfies Record<string, JobStep>;
 
 // ============================================================================
@@ -50,19 +50,19 @@ export const BOOK_STATUS_LABELS: Record<BookStatus, string> = {
 /** Labels for job steps displayed in stepper UI */
 export const JOB_STEP_LABELS: Record<JobStep, string> = {
   character_sheet: "Analyzing photo...",
-  story_outline: "Writing story...",
-  page_content: "Creating pages...",
-  illustrations: "Generating artwork...",
-  pdf_generation: "Building your book...",
+  page1_text: "Writing story...",
+  cover_image: "Creating cover...",
+  page1_image: "Illustrating page...",
+  complete: "Finishing up...",
 };
 
 /** Ordered list of job steps for stepper display */
 export const JOB_STEPS_ORDER: JobStep[] = [
   "character_sheet",
-  "story_outline",
-  "page_content",
-  "illustrations",
-  "pdf_generation",
+  "page1_text",
+  "cover_image",
+  "page1_image",
+  "complete",
 ];
 
 // ============================================================================

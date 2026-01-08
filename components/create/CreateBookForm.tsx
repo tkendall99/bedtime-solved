@@ -94,38 +94,89 @@ export function CreateBookForm() {
   }, [form]);
 
   const onSubmit = async (data: CreateBookFormData) => {
+    console.log("[Form] Submit started", {
+      childName: data.childName,
+      ageBand: data.ageBand,
+      interests: data.interests,
+      tone: data.tone,
+      photoName: data.photo?.name,
+      photoSize: data.photo?.size,
+      photoType: data.photo?.type,
+    });
     setIsSubmitting(true);
 
     try {
-      // Build FormData for multipart upload
-      const formData = new FormData();
-      formData.append("child_name", data.childName);
-      formData.append("age_band", data.ageBand);
-      formData.append("interests", JSON.stringify(data.interests));
-      formData.append("tone", data.tone);
-      if (data.lesson) {
-        formData.append("moral_lesson", data.lesson);
-      }
-      formData.append("photo", data.photo);
+      // Step 1: Get signed URL for direct upload to Supabase Storage
+      console.log("[Form] Getting signed upload URL...");
+      const fileExt = data.photo.name.split(".").pop()?.toLowerCase() || "jpg";
 
-      // Call API
-      const response = await fetch("/api/books", {
+      const signedUrlRes = await fetch("/api/uploads/signed-url", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileType: data.photo.type,
+          fileExtension: fileExt,
+        }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create book");
+      if (!signedUrlRes.ok) {
+        const err = await signedUrlRes.json();
+        throw new Error(err.error || "Failed to get upload URL");
       }
 
-      const { bookId } = await response.json();
+      const { signedUrl, path, bookId, token } = await signedUrlRes.json();
+      console.log("[Form] Got signed URL for bookId:", bookId);
+
+      // Step 2: Upload photo directly to Supabase Storage
+      console.log("[Form] Uploading photo directly to storage...");
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": data.photo.type,
+        },
+        body: data.photo,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("Failed to upload photo. Please try again.");
+      }
+      console.log("[Form] Photo uploaded successfully");
+
+      // Step 3: Create the book record (photo already uploaded)
+      console.log("[Form] Creating book record...");
+      const bookRes = await fetch("/api/books", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookId,
+          child_name: data.childName,
+          age_band: data.ageBand,
+          interests: data.interests,
+          tone: data.tone,
+          moral_lesson: data.lesson || null,
+          source_photo_path: path,
+        }),
+      });
+
+      if (!bookRes.ok) {
+        let errorMessage = "Failed to create book";
+        try {
+          const errorData = await bookRes.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${bookRes.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await bookRes.json();
+      console.log("[Form] Book created successfully:", result.bookId);
 
       // Clear session storage
       sessionStorage.removeItem(STORAGE_KEY);
 
       // Navigate to preview with bookId
-      router.push(`/create/preview?bookId=${bookId}`);
+      router.push(`/create/preview?bookId=${result.bookId}`);
     } catch (error) {
       console.error("Submit error:", error);
       toast.error(

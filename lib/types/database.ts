@@ -29,10 +29,10 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const JOB_STEPS = [
   "character_sheet",
-  "story_outline",
-  "page_content",
-  "illustrations",
-  "pdf_generation",
+  "page1_text",
+  "cover_image",
+  "page1_image",
+  "complete",
 ] as const;
 
 export type JobStep = (typeof JOB_STEPS)[number];
@@ -60,7 +60,10 @@ export interface Book {
   interests: string[];
   tone: Tone;
   moral_lesson: string | null;
+  title: string | null;
   source_photo_path: string | null;
+  character_sheet_path: string | null;
+  cover_image_path: string | null;
   status: BookStatus;
   error_message: string | null;
   created_at: string;
@@ -105,11 +108,19 @@ export interface CreateBookInput {
   moral_lesson?: string;
 }
 
+export interface BookPreview {
+  title: string;
+  coverUrl: string;
+  page1ImageUrl: string;
+  page1Text: string;
+}
+
 export interface BookStatusResponse {
   bookId: string;
   status: BookStatus;
   errorMessage: string | null;
   createdAt: string;
+  preview?: BookPreview;
 }
 
 export interface CreateBookResponse {
