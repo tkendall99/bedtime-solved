@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
+import { processNextJob } from "@/server/jobs/processNextJob";
 import type { CreateBookResponse, ApiError, AgeBand, Tone } from "@/lib/types/database";
 import { z } from "zod";
 
@@ -20,32 +21,6 @@ const createBookSchema = z.object({
   moral_lesson: z.string().max(140).nullable().optional(),
   source_photo_path: z.string().min(1),
 });
-
-/**
- * Trigger job processing in background.
- * Makes a POST request to the job processor endpoint.
- * Uses Next.js `after()` to run after the response is sent.
- */
-async function triggerJobProcessing(baseUrl: string): Promise<void> {
-  const url = new URL("/api/admin/jobs/process-next", baseUrl);
-
-  try {
-    const response = await fetch(url.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (response.ok) {
-      console.log("[Background] Job processing triggered successfully");
-    } else {
-      console.error("[Background] Job processing trigger failed:", response.status);
-    }
-  } catch (error) {
-    console.error("[Background] Failed to trigger job processing:", error);
-  }
-}
 
 /**
  * POST /api/books
@@ -167,9 +142,15 @@ export async function POST(
     log(`Job created for book: ${bookId}`);
 
     // 5. Schedule job processing to run after response is sent
-    const baseUrl = request.url;
+    // Call processNextJob directly to avoid Vercel auth issues with HTTP requests
     after(async () => {
-      await triggerJobProcessing(baseUrl);
+      console.log("[Background] Starting job processing...");
+      try {
+        const result = await processNextJob();
+        console.log("[Background] Job processing result:", result);
+      } catch (error) {
+        console.error("[Background] Job processing error:", error);
+      }
     });
 
     // 6. Return success
