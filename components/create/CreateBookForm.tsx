@@ -106,66 +106,77 @@ export function CreateBookForm() {
     setIsSubmitting(true);
 
     try {
-      // Build FormData for multipart upload
-      const formData = new FormData();
-      formData.append("child_name", data.childName);
-      formData.append("age_band", data.ageBand);
-      formData.append("interests", JSON.stringify(data.interests));
-      formData.append("tone", data.tone);
-      if (data.lesson) {
-        formData.append("moral_lesson", data.lesson);
+      // Step 1: Get signed URL for direct upload to Supabase Storage
+      console.log("[Form] Getting signed upload URL...");
+      const fileExt = data.photo.name.split(".").pop()?.toLowerCase() || "jpg";
+
+      const signedUrlRes = await fetch("/api/uploads/signed-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileType: data.photo.type,
+          fileExtension: fileExt,
+        }),
+      });
+
+      if (!signedUrlRes.ok) {
+        const err = await signedUrlRes.json();
+        throw new Error(err.error || "Failed to get upload URL");
       }
-      formData.append("photo", data.photo);
 
-      console.log("[Form] FormData built, starting fetch...");
+      const { signedUrl, path, bookId, token } = await signedUrlRes.json();
+      console.log("[Form] Got signed URL for bookId:", bookId);
 
-      // Call API with timeout (90 seconds for large photo uploads)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log("[Form] Timeout triggered after 90 seconds");
-        controller.abort();
-      }, 90000);
+      // Step 2: Upload photo directly to Supabase Storage
+      console.log("[Form] Uploading photo directly to storage...");
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": data.photo.type,
+        },
+        body: data.photo,
+      });
 
-      let response: Response;
-      try {
-        console.log("[Form] Calling fetch to /api/books");
-        response = await fetch("/api/books", {
-          method: "POST",
-          body: formData,
-          signal: controller.signal,
-        });
-        console.log("[Form] Fetch completed with status:", response.status);
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        console.error("[Form] Fetch error:", fetchError);
-        // Handle abort (timeout) specifically
-        if (fetchError instanceof Error && fetchError.name === "AbortError") {
-          throw new Error("Request timed out. Please try again.");
-        }
-        // Handle network errors
-        throw new Error("Network error. Please check your connection and try again.");
+      if (!uploadRes.ok) {
+        throw new Error("Failed to upload photo. Please try again.");
       }
-      clearTimeout(timeoutId);
+      console.log("[Form] Photo uploaded successfully");
 
-      if (!response.ok) {
+      // Step 3: Create the book record (photo already uploaded)
+      console.log("[Form] Creating book record...");
+      const bookRes = await fetch("/api/books", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookId,
+          child_name: data.childName,
+          age_band: data.ageBand,
+          interests: data.interests,
+          tone: data.tone,
+          moral_lesson: data.lesson || null,
+          source_photo_path: path,
+        }),
+      });
+
+      if (!bookRes.ok) {
         let errorMessage = "Failed to create book";
         try {
-          const errorData = await response.json();
+          const errorData = await bookRes.json();
           errorMessage = errorData.error || errorMessage;
         } catch {
-          // Response wasn't JSON, use status text
-          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+          errorMessage = `Server error: ${bookRes.status}`;
         }
         throw new Error(errorMessage);
       }
 
-      const { bookId } = await response.json();
+      const result = await bookRes.json();
+      console.log("[Form] Book created successfully:", result.bookId);
 
       // Clear session storage
       sessionStorage.removeItem(STORAGE_KEY);
 
       // Navigate to preview with bookId
-      router.push(`/create/preview?bookId=${bookId}`);
+      router.push(`/create/preview?bookId=${result.bookId}`);
     } catch (error) {
       console.error("Submit error:", error);
       toast.error(

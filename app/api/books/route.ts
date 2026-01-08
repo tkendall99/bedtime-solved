@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseCreateBookFormData } from "@/lib/validators/createBookApi";
 import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
-import type { CreateBookResponse, ApiError } from "@/lib/types/database";
+import type { CreateBookResponse, ApiError, AgeBand, Tone } from "@/lib/types/database";
+import { z } from "zod";
 
 // Extend timeout to 60 seconds (requires Vercel Pro plan, otherwise defaults to 10s)
 export const maxDuration = 60;
+
+/**
+ * Request body schema for creating a book.
+ * Photo is already uploaded directly to Supabase Storage by the client.
+ */
+const createBookSchema = z.object({
+  bookId: z.string().uuid(),
+  child_name: z.string().min(2).max(32),
+  age_band: z.enum(["3-4", "5-6", "7-9"]),
+  interests: z.array(z.string()).min(1).max(3),
+  tone: z.enum(["gentle", "funny", "brave"]),
+  moral_lesson: z.string().max(140).nullable().optional(),
+  source_photo_path: z.string().min(1),
+});
 
 /**
  * Trigger job processing in background.
@@ -36,16 +50,17 @@ async function triggerJobProcessing(baseUrl: string): Promise<void> {
 /**
  * POST /api/books
  *
- * Creates a new book record, uploads the source photo to storage,
- * and queues a generation job.
+ * Creates a new book record and queues a generation job.
+ * Photo must already be uploaded to Supabase Storage (client-side direct upload).
  *
- * Request: multipart/form-data
+ * Request: JSON
+ * - bookId: string (UUID, matches the upload path)
  * - child_name: string
  * - age_band: "3-4" | "5-6" | "7-9"
- * - interests: JSON string array
+ * - interests: string[]
  * - tone: "gentle" | "funny" | "brave"
  * - moral_lesson: string (optional)
- * - photo: File
+ * - source_photo_path: string (path in uploads bucket)
  *
  * Response: { bookId: string }
  */
@@ -57,104 +72,75 @@ export async function POST(
 
   log("Request received");
   const supabase = createAdminClient();
-  let bookId: string | null = null;
 
   try {
-    // 1. Parse multipart form data
-    log("Parsing form data...");
-    const formData = await request.formData();
-    log("Form data parsed");
+    // 1. Parse JSON body
+    log("Parsing request body...");
+    const body = await request.json();
 
-    const parseResult = parseCreateBookFormData(formData);
-
-    if (!parseResult.success || !parseResult.data) {
-      console.error("Validation failed:", parseResult.error, parseResult.fieldErrors);
+    const parseResult = createBookSchema.safeParse(body);
+    if (!parseResult.success) {
+      console.error("Validation failed:", parseResult.error.flatten());
       return NextResponse.json(
         {
-          error: parseResult.error || "Validation failed",
-          details: parseResult.fieldErrors,
+          error: "Validation failed",
+          details: parseResult.error.flatten().fieldErrors,
         },
         { status: 400 }
       );
     }
 
-    const { fields, photo } = parseResult.data;
-    log(`Photo size: ${photo.size} bytes (${(photo.size / 1024 / 1024).toFixed(2)} MB)`);
+    const { bookId, child_name, age_band, interests, tone, moral_lesson, source_photo_path } = parseResult.data;
+    log(`Validated data for bookId: ${bookId}`);
 
-    // 2. Insert book row (status: draft)
+    // 2. Verify the photo exists in storage
+    log("Verifying photo exists in storage...");
+    const { data: photoCheck, error: photoCheckError } = await supabase.storage
+      .from("uploads")
+      .list(bookId, { limit: 1 });
+
+    if (photoCheckError || !photoCheck || photoCheck.length === 0) {
+      console.error("Photo not found in storage:", photoCheckError);
+      return NextResponse.json(
+        { error: "Photo not found. Please upload again." },
+        { status: 400 }
+      );
+    }
+    log("Photo verified in storage");
+
+    // 3. Insert book row with the provided bookId
     log("Inserting book row...");
-    const { data: book, error: bookError } = await supabase
+    const { error: bookError } = await supabase
       .from("books")
       .insert({
-        child_name: fields.child_name,
-        age_band: fields.age_band,
-        interests: fields.interests,
-        tone: fields.tone,
-        moral_lesson: fields.moral_lesson || null,
+        id: bookId,
+        child_name,
+        age_band: age_band as AgeBand,
+        interests,
+        tone: tone as Tone,
+        moral_lesson: moral_lesson || null,
+        source_photo_path,
         status: BOOK_STATUS.DRAFT,
-      })
-      .select("id")
-      .single();
+      });
 
-    if (bookError || !book) {
+    if (bookError) {
       console.error("Failed to insert book:", bookError);
+      // Check if it's a duplicate key error (book already exists)
+      if (bookError.code === "23505") {
+        return NextResponse.json(
+          { error: "Book already exists" },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: "Failed to create book" },
         { status: 500 }
       );
     }
 
-    bookId = book.id;
     log(`Book created: ${bookId}`);
 
-    // 3. Upload photo to storage
-    const fileExt = photo.name.split(".").pop()?.toLowerCase() || "jpg";
-    const storagePath = `${bookId}/source.${fileExt}`;
-
-    log("Reading photo buffer...");
-    const photoBuffer = await photo.arrayBuffer();
-    log(`Photo buffer ready (${photoBuffer.byteLength} bytes)`);
-
-    log("Uploading to Supabase storage...");
-    const { error: uploadError } = await supabase.storage
-      .from("uploads")
-      .upload(storagePath, photoBuffer, {
-        contentType: photo.type,
-        upsert: true, // Idempotent - safe to retry
-      });
-
-    if (uploadError) {
-      console.error("Failed to upload photo:", uploadError);
-      // Mark book as failed
-      await supabase
-        .from("books")
-        .update({
-          status: BOOK_STATUS.FAILED,
-          error_message: "Photo upload failed",
-        })
-        .eq("id", bookId);
-      return NextResponse.json(
-        { error: "Failed to upload photo" },
-        { status: 500 }
-      );
-    }
-
-    log(`Photo uploaded: ${storagePath}`);
-
-    // 4. Update book with photo path
-    log("Updating book with photo path...");
-    const { error: updateError } = await supabase
-      .from("books")
-      .update({ source_photo_path: storagePath })
-      .eq("id", bookId);
-
-    if (updateError) {
-      console.error("Failed to update book with photo path:", updateError);
-      // Non-fatal - continue with job creation
-    }
-    log("Book updated");
-
-    // 5. Insert job row (queued, step: character_sheet)
+    // 4. Insert job row (queued, step: character_sheet)
     log("Creating job...");
     const { error: jobError } = await supabase.from("book_jobs").insert({
       book_id: bookId,
@@ -180,34 +166,17 @@ export async function POST(
 
     log(`Job created for book: ${bookId}`);
 
-    // 6. Schedule job processing to run after response is sent
-    // Uses Next.js after() to keep the function alive for background work
+    // 5. Schedule job processing to run after response is sent
     const baseUrl = request.url;
     after(async () => {
       await triggerJobProcessing(baseUrl);
     });
 
-    // 7. Return success with bookId immediately
+    // 6. Return success
     log(`SUCCESS! Returning bookId: ${bookId}`);
-    return NextResponse.json({ bookId: bookId! }, { status: 201 });
+    return NextResponse.json({ bookId }, { status: 201 });
   } catch (error) {
     console.error("Unexpected error in POST /api/books:", error);
-
-    // If we created a book, mark it as failed
-    if (bookId) {
-      try {
-        await supabase
-          .from("books")
-          .update({
-            status: BOOK_STATUS.FAILED,
-            error_message: "Unexpected error during creation",
-          })
-          .eq("id", bookId);
-      } catch (cleanupError) {
-        console.error("Failed to mark book as failed:", cleanupError);
-      }
-    }
-
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

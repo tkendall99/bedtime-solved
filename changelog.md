@@ -2,20 +2,32 @@
 
 ## [0.4.5] - 2026-01-08
 
-### Fixed - Toast Notifications + Improved Error Handling
+### Fixed - Photo Upload (413 Payload Too Large)
 
-**Issue:** Form submission was spinning indefinitely with no feedback. Toast notifications weren't appearing.
+**Issue:** Photo uploads were failing with HTTP 413 error due to Vercel's 4.5MB body size limit.
 
-#### Root Cause
-- `<Toaster />` component from sonner was never added to the app layout
-- Fetch requests had no timeout, causing indefinite hangs
-- Network errors weren't being caught properly
+#### Solution: Client-side Direct Upload
+Instead of sending the photo through the API, we now upload directly to Supabase Storage:
 
-#### Fix
-- Added `<Toaster richColors position="top-center" />` to `app/layout.tsx`
-- Added 60-second timeout to form submission fetch
-- Improved error handling for network errors, timeouts, and non-JSON responses
-- Specific error messages for timeout vs network errors
+1. **New endpoint: `POST /api/uploads/signed-url`**
+   - Generates a pre-signed upload URL for Supabase Storage
+   - Creates a unique bookId for the upload path
+   - Returns: `{ signedUrl, path, bookId, token }`
+
+2. **Updated form submission flow:**
+   - Step 1: Get signed URL from API
+   - Step 2: Upload photo directly to Supabase Storage (bypasses Vercel)
+   - Step 3: Create book record via API with storage path (no file, just JSON)
+
+3. **Updated `POST /api/books`:**
+   - Now accepts JSON body instead of multipart FormData
+   - Expects `bookId` and `source_photo_path` (photo already uploaded)
+   - Verifies photo exists in storage before creating book
+   - Much faster since no file transfer through API
+
+#### Also Fixed
+- Toast notifications now working (added `<Toaster />` to layout)
+- Better error messages for various failure scenarios
 
 ---
 
