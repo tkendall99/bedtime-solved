@@ -29,10 +29,10 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const JOB_STEPS = [
   "character_sheet",
-  "story_outline",
-  "page_content",
-  "illustrations",
-  "pdf_generation",
+  "page1_text",
+  "cover_image",
+  "page1_image",
+  "complete",
 ] as const;
 
 export type JobStep = (typeof JOB_STEPS)[number];

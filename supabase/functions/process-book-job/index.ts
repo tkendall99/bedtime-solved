@@ -5,11 +5,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY")!;
 
-// Constants
+// Constants - each image gets its own step to avoid CPU timeout
 const JOB_STEP = {
   CHARACTER_SHEET: "character_sheet",
   PAGE1_TEXT: "page1_text",
-  ILLUSTRATIONS: "illustrations",
+  COVER_IMAGE: "cover_image",
+  PAGE1_IMAGE: "page1_image",
   COMPLETE: "complete",
 } as const;
 
@@ -342,14 +343,13 @@ async function processJob(jobId: string) {
         .update({ character_sheet_path: characterSheetPath })
         .eq("id", book.id);
 
-      // Move to next step
+      // Move to next step and return - next invocation will continue
       await supabase
         .from("book_jobs")
-        .update({ step: JOB_STEP.PAGE1_TEXT })
+        .update({ step: JOB_STEP.PAGE1_TEXT, status: "queued" })
         .eq("id", jobId);
 
-      job.step = JOB_STEP.PAGE1_TEXT;
-      book.character_sheet_path = characterSheetPath;
+      return { success: true, step: "character_sheet", bookId: book.id };
     }
 
     // Step 2: Page 1 Text
@@ -378,35 +378,24 @@ async function processJob(jobId: string) {
         page_type: "content",
       });
 
-      // Move to next step
+      // Move to next step and return - next invocation will continue
       await supabase
         .from("book_jobs")
-        .update({ step: JOB_STEP.ILLUSTRATIONS })
+        .update({ step: JOB_STEP.COVER_IMAGE, status: "queued" })
         .eq("id", jobId);
 
-      job.step = JOB_STEP.ILLUSTRATIONS;
+      return { success: true, step: "page1_text", bookId: book.id };
     }
 
-    // Step 3: Illustrations
-    if (job.step === JOB_STEP.ILLUSTRATIONS) {
-      console.log(`[Job ${jobId}] Step 3: Illustrations`);
+    // Step 3: Cover Image (separate step to avoid CPU timeout)
+    if (job.step === JOB_STEP.COVER_IMAGE) {
+      console.log(`[Job ${jobId}] Step 3: Cover Image`);
 
       const characterSheetPath = book.character_sheet_path;
       if (!characterSheetPath) {
         throw new Error("Character sheet path missing");
       }
 
-      // Fetch page 1 text for context
-      const { data: page1 } = await supabase
-        .from("book_pages")
-        .select("text_content")
-        .eq("book_id", book.id)
-        .eq("page_number", 1)
-        .single();
-
-      const page1Text = page1?.text_content || "";
-
-      // Generate cover image
       const coverPrompt = `Children's storybook cover illustration featuring a ${book.age_band} year old child.
 Style: Warm, magical Pixar/Disney quality. Golden hour lighting, soft colors.
 Scene: The child as the hero, with ${book.interests.join(", ")} themed elements.
@@ -428,7 +417,34 @@ Use the reference to maintain the child's likeness.`;
         .update({ cover_image_path: coverPath })
         .eq("id", book.id);
 
-      // Generate page 1 illustration
+      // Move to next step and return - next invocation will continue
+      await supabase
+        .from("book_jobs")
+        .update({ step: JOB_STEP.PAGE1_IMAGE, status: "queued" })
+        .eq("id", jobId);
+
+      return { success: true, step: "cover_image", bookId: book.id };
+    }
+
+    // Step 4: Page 1 Image (separate step to avoid CPU timeout)
+    if (job.step === JOB_STEP.PAGE1_IMAGE) {
+      console.log(`[Job ${jobId}] Step 4: Page 1 Image`);
+
+      const characterSheetPath = book.character_sheet_path;
+      if (!characterSheetPath) {
+        throw new Error("Character sheet path missing");
+      }
+
+      // Fetch page 1 text for context
+      const { data: page1 } = await supabase
+        .from("book_pages")
+        .select("text_content")
+        .eq("book_id", book.id)
+        .eq("page_number", 1)
+        .single();
+
+      const page1Text = page1?.text_content || "";
+
       const page1Prompt = `Children's storybook interior illustration.
 Story context: "${page1Text}"
 Style: Warm, friendly Pixar/Disney style matching a ${book.tone} bedtime story.
@@ -451,16 +467,16 @@ Soft, warm lighting suitable for bedtime reading.`;
         .eq("book_id", book.id)
         .eq("page_number", 1);
 
-      // Move to complete
+      // Move to complete step and return - next invocation will finalize
       await supabase
         .from("book_jobs")
-        .update({ step: JOB_STEP.COMPLETE })
+        .update({ step: JOB_STEP.COMPLETE, status: "queued" })
         .eq("id", jobId);
 
-      job.step = JOB_STEP.COMPLETE;
+      return { success: true, step: "page1_image", bookId: book.id };
     }
 
-    // Step 4: Complete
+    // Step 5: Complete
     if (job.step === JOB_STEP.COMPLETE) {
       console.log(`[Job ${jobId}] Marking complete`);
 
@@ -572,29 +588,51 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Edge Function] Claimed job:", jobId);
 
-    // Process the job in the background (don't await)
-    // EdgeRuntime.waitUntil keeps the function alive after response is sent
-    const processingPromise = processJob(jobId)
-      .then((result) => {
-        console.log("[Edge Function] Job completed:", result);
-      })
-      .catch((error) => {
-        console.error("[Edge Function] Job failed:", error);
-      });
+    // Process one step of the job
+    const result = await processJob(jobId);
+    console.log("[Edge Function] Step completed:", result);
 
-    // Tell Deno to keep running until processing completes
-    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(processingPromise);
+    // Check if there's more work to do (job is queued for next step)
+    const { data: updatedJob } = await supabase
+      .from("book_jobs")
+      .select("status")
+      .eq("id", jobId)
+      .single();
+
+    // If job is queued (has more steps), trigger next step via self-call
+    const continueProcessing = updatedJob?.status === "queued";
+
+    if (continueProcessing) {
+      console.log("[Edge Function] More steps to process, triggering next step...");
+
+      // Make async call to self to continue processing
+      const selfCallPromise = fetch(
+        `${SUPABASE_URL}/functions/v1/process-book-job`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ job_id: jobId }),
+        }
+      ).catch((err) => console.error("[Edge Function] Self-call error:", err));
+
+      // Use waitUntil to ensure the call completes
+      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        EdgeRuntime.waitUntil(selfCallPromise);
+      }
     }
 
-    // Return immediately - processing continues in background
+    // Return success
     return new Response(
       JSON.stringify({
-        message: "Job processing started",
+        message: continueProcessing ? "Step completed, continuing..." : "Job completed",
+        step: result.step,
         jobId: jobId,
       }),
-      { status: 202, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("[Edge Function] Error:", error);
