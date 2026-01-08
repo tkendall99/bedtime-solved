@@ -4,6 +4,9 @@ import { parseCreateBookFormData } from "@/lib/validators/createBookApi";
 import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
 import type { CreateBookResponse, ApiError } from "@/lib/types/database";
 
+// Extend timeout to 60 seconds (requires Vercel Pro plan, otherwise defaults to 10s)
+export const maxDuration = 60;
+
 /**
  * Trigger job processing in background.
  * Makes a POST request to the job processor endpoint.
@@ -49,12 +52,19 @@ async function triggerJobProcessing(baseUrl: string): Promise<void> {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<CreateBookResponse | ApiError>> {
+  const startTime = Date.now();
+  const log = (msg: string) => console.log(`[API /books] ${msg} (+${Date.now() - startTime}ms)`);
+
+  log("Request received");
   const supabase = createAdminClient();
   let bookId: string | null = null;
 
   try {
     // 1. Parse multipart form data
+    log("Parsing form data...");
     const formData = await request.formData();
+    log("Form data parsed");
+
     const parseResult = parseCreateBookFormData(formData);
 
     if (!parseResult.success || !parseResult.data) {
@@ -69,8 +79,10 @@ export async function POST(
     }
 
     const { fields, photo } = parseResult.data;
+    log(`Photo size: ${photo.size} bytes (${(photo.size / 1024 / 1024).toFixed(2)} MB)`);
 
     // 2. Insert book row (status: draft)
+    log("Inserting book row...");
     const { data: book, error: bookError } = await supabase
       .from("books")
       .insert({
@@ -93,13 +105,17 @@ export async function POST(
     }
 
     bookId = book.id;
-    console.log(`Created book: ${bookId}`);
+    log(`Book created: ${bookId}`);
 
     // 3. Upload photo to storage
     const fileExt = photo.name.split(".").pop()?.toLowerCase() || "jpg";
     const storagePath = `${bookId}/source.${fileExt}`;
-    const photoBuffer = await photo.arrayBuffer();
 
+    log("Reading photo buffer...");
+    const photoBuffer = await photo.arrayBuffer();
+    log(`Photo buffer ready (${photoBuffer.byteLength} bytes)`);
+
+    log("Uploading to Supabase storage...");
     const { error: uploadError } = await supabase.storage
       .from("uploads")
       .upload(storagePath, photoBuffer, {
@@ -123,9 +139,10 @@ export async function POST(
       );
     }
 
-    console.log(`Uploaded photo: ${storagePath}`);
+    log(`Photo uploaded: ${storagePath}`);
 
     // 4. Update book with photo path
+    log("Updating book with photo path...");
     const { error: updateError } = await supabase
       .from("books")
       .update({ source_photo_path: storagePath })
@@ -135,8 +152,10 @@ export async function POST(
       console.error("Failed to update book with photo path:", updateError);
       // Non-fatal - continue with job creation
     }
+    log("Book updated");
 
     // 5. Insert job row (queued, step: character_sheet)
+    log("Creating job...");
     const { error: jobError } = await supabase.from("book_jobs").insert({
       book_id: bookId,
       status: "queued",
@@ -159,7 +178,7 @@ export async function POST(
       );
     }
 
-    console.log(`Created job for book: ${bookId}`);
+    log(`Job created for book: ${bookId}`);
 
     // 6. Schedule job processing to run after response is sent
     // Uses Next.js after() to keep the function alive for background work
@@ -169,7 +188,7 @@ export async function POST(
     });
 
     // 7. Return success with bookId immediately
-    // bookId is guaranteed to be non-null at this point since we set it after insert
+    log(`SUCCESS! Returning bookId: ${bookId}`);
     return NextResponse.json({ bookId: bookId! }, { status: 201 });
   } catch (error) {
     console.error("Unexpected error in POST /api/books:", error);
