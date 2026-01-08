@@ -5,6 +5,34 @@ import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
 import type { CreateBookResponse, ApiError } from "@/lib/types/database";
 
 /**
+ * Trigger job processing in background (fire-and-forget).
+ * Makes a POST request to the job processor endpoint without waiting for completion.
+ * Errors are logged but don't affect the caller.
+ */
+function triggerJobProcessing(request: NextRequest): void {
+  // Build the URL for the job processor endpoint
+  const url = new URL("/api/admin/jobs/process-next", request.url);
+
+  // Fire off the request without awaiting - true fire-and-forget
+  fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((response) => {
+      if (response.ok) {
+        console.log("[Background] Job processing triggered successfully");
+      } else {
+        console.error("[Background] Job processing trigger failed:", response.status);
+      }
+    })
+    .catch((error) => {
+      console.error("[Background] Failed to trigger job processing:", error);
+    });
+}
+
+/**
  * POST /api/books
  *
  * Creates a new book record, uploads the source photo to storage,
@@ -135,7 +163,11 @@ export async function POST(
 
     console.log(`Created job for book: ${bookId}`);
 
-    // 6. Return success with bookId
+    // 6. Trigger job processing in background (fire-and-forget)
+    // This starts the AI generation without blocking the response
+    triggerJobProcessing(request);
+
+    // 7. Return success with bookId immediately
     // bookId is guaranteed to be non-null at this point since we set it after insert
     return NextResponse.json({ bookId: bookId! }, { status: 201 });
   } catch (error) {

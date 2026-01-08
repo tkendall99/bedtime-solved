@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.2] - 2026-01-08
+
+### Added - Automatic Job Processing
+
+**Feature:** Jobs now start automatically when a book is created
+
+#### Changes
+- `POST /api/books` now triggers job processing in background (fire-and-forget)
+- No manual intervention needed - generation starts immediately after book creation
+- Users see the generating stepper, then preview appears automatically when ready
+
+---
+
 ## [0.4.1] - 2026-01-08
 
 ### Added - Preview Page UI
