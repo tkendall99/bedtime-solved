@@ -94,6 +94,15 @@ export function CreateBookForm() {
   }, [form]);
 
   const onSubmit = async (data: CreateBookFormData) => {
+    console.log("[Form] Submit started", {
+      childName: data.childName,
+      ageBand: data.ageBand,
+      interests: data.interests,
+      tone: data.tone,
+      photoName: data.photo?.name,
+      photoSize: data.photo?.size,
+      photoType: data.photo?.type,
+    });
     setIsSubmitting(true);
 
     try {
@@ -108,19 +117,27 @@ export function CreateBookForm() {
       }
       formData.append("photo", data.photo);
 
-      // Call API with timeout (60 seconds for large photo uploads)
+      console.log("[Form] FormData built, starting fetch...");
+
+      // Call API with timeout (90 seconds for large photo uploads)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const timeoutId = setTimeout(() => {
+        console.log("[Form] Timeout triggered after 90 seconds");
+        controller.abort();
+      }, 90000);
 
       let response: Response;
       try {
+        console.log("[Form] Calling fetch to /api/books");
         response = await fetch("/api/books", {
           method: "POST",
           body: formData,
           signal: controller.signal,
         });
+        console.log("[Form] Fetch completed with status:", response.status);
       } catch (fetchError) {
         clearTimeout(timeoutId);
+        console.error("[Form] Fetch error:", fetchError);
         // Handle abort (timeout) specifically
         if (fetchError instanceof Error && fetchError.name === "AbortError") {
           throw new Error("Request timed out. Please try again.");
