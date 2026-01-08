@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
-import { processNextJob } from "@/server/jobs/processNextJob";
 import type { CreateBookResponse, ApiError, AgeBand, Tone } from "@/lib/types/database";
 import { z } from "zod";
 
@@ -141,17 +140,9 @@ export async function POST(
 
     log(`Job created for book: ${bookId}`);
 
-    // 5. Schedule job processing to run after response is sent
-    // Call processNextJob directly to avoid Vercel auth issues with HTTP requests
-    after(async () => {
-      console.log("[Background] Starting job processing...");
-      try {
-        const result = await processNextJob();
-        console.log("[Background] Job processing result:", result);
-      } catch (error) {
-        console.error("[Background] Job processing error:", error);
-      }
-    });
+    // 5. Job processing is handled by Supabase Edge Function
+    // A database webhook triggers the Edge Function on INSERT to book_jobs
+    // This avoids Vercel's 10-second timeout limitation
 
     // 6. Return success
     log(`SUCCESS! Returning bookId: ${bookId}`);

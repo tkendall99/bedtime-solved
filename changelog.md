@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.5.0] - 2026-01-08
+
+### Added - Supabase Edge Function for Job Processing
+
+**Issue:** Vercel Hobby plan has a 10-second timeout, but AI image generation takes 20-60 seconds per image. Jobs were getting stuck on the "illustrations" step.
+
+#### Solution: Supabase Edge Function
+Edge Functions run on Deno with a 150-second timeout, bypassing Vercel's limitations entirely.
+
+**New Files:**
+- `supabase/functions/process-book-job/index.ts` - Complete job processor that runs in Supabase Edge Functions
+
+**Changes:**
+- Removed `after()` callback from `POST /api/books` - no longer needed
+- Job processing now triggered by Supabase database webhook on INSERT to `book_jobs`
+- Added `supabase/` directory with project configuration
+
+**Edge Function Features:**
+- Claims and processes queued jobs
+- Generates character sheet from uploaded photo
+- Generates story text via OpenRouter LLM
+- Generates cover and page 1 illustrations
+- Uploads all assets to Supabase Storage
+- Automatic retry on failure (up to 3 attempts)
+- Full error handling and status updates
+
+**Setup Required:**
+1. Edge Function deployed via Supabase CLI
+2. `OPENROUTER_API_KEY` secret set in Supabase
+3. Database webhook needed: trigger `process-book-job` on INSERT to `book_jobs`
+
+---
+
 ## [0.4.5] - 2026-01-08
 
 ### Fixed - Photo Upload (413 Payload Too Large)
