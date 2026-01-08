@@ -2,17 +2,20 @@
 
 ## [0.4.5] - 2026-01-08
 
-### Fixed - Toast Notifications Not Displaying
+### Fixed - Toast Notifications + Improved Error Handling
 
-**Issue:** Form errors were being caught and toast.error() was called, but no toast appeared on screen. User saw form spinning then stopping with no feedback.
+**Issue:** Form submission was spinning indefinitely with no feedback. Toast notifications weren't appearing.
 
 #### Root Cause
 - `<Toaster />` component from sonner was never added to the app layout
-- Toast calls worked but had nowhere to render
+- Fetch requests had no timeout, causing indefinite hangs
+- Network errors weren't being caught properly
 
 #### Fix
 - Added `<Toaster richColors position="top-center" />` to `app/layout.tsx`
-- Error messages now properly display to users
+- Added 60-second timeout to form submission fetch
+- Improved error handling for network errors, timeouts, and non-JSON responses
+- Specific error messages for timeout vs network errors
 
 ---
 

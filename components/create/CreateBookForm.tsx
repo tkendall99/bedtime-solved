@@ -108,15 +108,38 @@ export function CreateBookForm() {
       }
       formData.append("photo", data.photo);
 
-      // Call API
-      const response = await fetch("/api/books", {
-        method: "POST",
-        body: formData,
-      });
+      // Call API with timeout (60 seconds for large photo uploads)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      let response: Response;
+      try {
+        response = await fetch("/api/books", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        // Handle abort (timeout) specifically
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          throw new Error("Request timed out. Please try again.");
+        }
+        // Handle network errors
+        throw new Error("Network error. Please check your connection and try again.");
+      }
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create book");
+        let errorMessage = "Failed to create book";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // Response wasn't JSON, use status text
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const { bookId } = await response.json();
