@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.3] - 2026-01-08
+
+### Fixed - Book Titles and Cover Text
+
+**Issue:** AI image models generate garbled text (e.g., "The w of the sprfecalrter's and and title text.")
+
+#### Solution
+- LLM now generates proper book titles (e.g., "Emma's Pirate Adventure", "Tom and the Magic Submarine")
+- Cover images are generated WITHOUT any text - prompt explicitly forbids text/letters/words
+- Title is overlaid programmatically in the preview UI using CSS (always perfect rendering)
+- Added `title` column to books table to store generated titles
+
+#### Changes
+- `lib/ai/story.ts` - Now returns `bookTitle` in addition to story text
+- `lib/ai/images.ts` - Cover prompt explicitly says "NO TEXT, NO LETTERS, NO WORDS"
+- `server/jobs/processNextJob.ts` - Saves generated title to database
+- `app/api/books/[id]/route.ts` - Returns title in preview response
+- `components/create/BookPreviewCard.tsx` - Overlays title on cover image
+- Database migration: Added `title` column to books table
+
+---
+
 ## [0.4.2] - 2026-01-08
 
 ### Added - Automatic Job Processing

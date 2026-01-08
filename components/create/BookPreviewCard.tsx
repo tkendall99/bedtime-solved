@@ -76,6 +76,20 @@ export function BookPreviewCard({ preview, onContinue }: BookPreviewCardProps) {
               )}
             />
 
+            {/* Title Overlay - Programmatic text that's always perfect */}
+            {coverLoaded && (
+              <div className="absolute inset-x-0 top-0 pt-4 sm:pt-6 md:pt-8 px-4 text-center pointer-events-none">
+                <h2
+                  className="font-[family-name:var(--font-fraunces)] text-xl sm:text-2xl md:text-3xl font-bold text-amber-900"
+                  style={{
+                    textShadow: '0 2px 4px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.7)',
+                  }}
+                >
+                  {preview.title}
+                </h2>
+              </div>
+            )}
+
             {/* Subtle gloss overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
           </div>

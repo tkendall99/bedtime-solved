@@ -60,6 +60,7 @@ export interface Book {
   interests: string[];
   tone: Tone;
   moral_lesson: string | null;
+  title: string | null;
   source_photo_path: string | null;
   character_sheet_path: string | null;
   cover_image_path: string | null;
@@ -108,6 +109,7 @@ export interface CreateBookInput {
 }
 
 export interface BookPreview {
+  title: string;
   coverUrl: string;
   page1ImageUrl: string;
   page1Text: string;

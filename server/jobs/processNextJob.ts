@@ -97,7 +97,7 @@ export async function processNextJob(): Promise<ProcessResult> {
     // Update job step
     await updateJobStep(supabase, job.id, "page_content");
 
-    // Step 5: Generate page 1 story
+    // Step 5: Generate page 1 story (also generates book title)
     console.log(`[Job] Step: Generating page 1 story`);
     const storyResult = await generatePage1Story({
       childName: book.child_name,
@@ -106,6 +106,17 @@ export async function processNextJob(): Promise<ProcessResult> {
       tone: book.tone as Tone,
       moralLesson: book.moral_lesson,
     });
+
+    // Update book with generated title
+    await supabase
+      .from("books")
+      .update({
+        title: storyResult.bookTitle,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", book.id);
+
+    console.log(`[Job] Generated book title: "${storyResult.bookTitle}"`);
 
     // Insert page 1 record
     await supabase.from("book_pages").insert({

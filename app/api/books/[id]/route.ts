@@ -45,7 +45,7 @@ export async function GET(
 
   const { data: book, error } = await supabase
     .from("books")
-    .select("id, status, error_message, created_at, cover_image_path")
+    .select("id, status, error_message, created_at, cover_image_path, title, child_name")
     .eq("id", id)
     .single();
 
@@ -72,7 +72,9 @@ export async function GET(
 
   // Include preview data if status warrants it
   if (PREVIEW_STATUSES.includes(book.status)) {
-    const preview = await getPreviewData(supabase, id, book.cover_image_path);
+    // Use generated title or fallback to child's name
+    const bookTitle = book.title || `${book.child_name}'s Adventure`;
+    const preview = await getPreviewData(supabase, id, book.cover_image_path, bookTitle);
     if (preview) {
       response.preview = preview;
     }
@@ -87,7 +89,8 @@ export async function GET(
 async function getPreviewData(
   supabase: ReturnType<typeof createAdminClient>,
   bookId: string,
-  coverImagePath: string | null
+  coverImagePath: string | null,
+  title: string
 ): Promise<BookPreview | null> {
   try {
     // Fetch page 1 data
@@ -132,6 +135,7 @@ async function getPreviewData(
     }
 
     return {
+      title,
       coverUrl: coverUrlResult.data.signedUrl,
       page1ImageUrl: page1ImageResult.data.signedUrl,
       page1Text: page1.story_text,

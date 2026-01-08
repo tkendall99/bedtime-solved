@@ -21,6 +21,7 @@ export interface StoryGenerationInput {
 }
 
 export interface StoryGenerationOutput {
+  bookTitle: string;
   storyText: string;
   illustrationPrompt: string;
 }
@@ -77,15 +78,21 @@ CHILD DETAILS:
 ${moralLesson ? `- Lesson to weave in: ${moralLesson}` : ""}
 
 REQUIREMENTS:
-1. Write 1-3 sentences ONLY (this is just page 1 of a longer book)
-2. Introduce ${childName} as the main character doing something exciting
-3. Feature their primary interest (${primaryInterest}) prominently
-4. Match the ${tone} tone throughout
-5. End with something that makes the reader want to turn the page
-6. Also create a detailed illustration prompt describing the scene
+1. Create a catchy, memorable BOOK TITLE that:
+   - Includes ${childName}'s name
+   - Sounds like a real children's book (e.g., "${childName} and the Magic Castle", "${childName}'s Big Adventure")
+   - Relates to their interests (${primaryInterest})
+   - Is short (2-6 words max)
+2. Write 1-3 sentences ONLY (this is just page 1 of a longer book)
+3. Introduce ${childName} as the main character doing something exciting
+4. Feature their primary interest (${primaryInterest}) prominently
+5. Match the ${tone} tone throughout
+6. End with something that makes the reader want to turn the page
+7. Also create a detailed illustration prompt describing the scene
 
 RESPOND WITH THIS EXACT JSON FORMAT:
 {
+  "bookTitle": "A catchy book title including the child's name...",
   "storyText": "The story text for page 1...",
   "illustrationPrompt": "A detailed visual description of the scene for an illustrator..."
 }`;
@@ -124,10 +131,10 @@ export async function generatePage1Story(
   );
 
   // Parse the JSON response
-  const result = parseStoryResponse(response);
+  const result = parseStoryResponse(response, input.childName);
 
   console.log(
-    `[Story] Generated story (${result.storyText.length} chars): "${result.storyText.substring(0, 50)}..."`
+    `[Story] Generated "${result.bookTitle}" - story (${result.storyText.length} chars): "${result.storyText.substring(0, 50)}..."`
   );
 
   return result;
@@ -136,7 +143,7 @@ export async function generatePage1Story(
 /**
  * Parse and validate the LLM response.
  */
-function parseStoryResponse(response: string): StoryGenerationOutput {
+function parseStoryResponse(response: string, childName: string): StoryGenerationOutput {
   // Try to extract JSON from the response (handle markdown code blocks)
   let jsonStr = response.trim();
 
@@ -149,6 +156,13 @@ function parseStoryResponse(response: string): StoryGenerationOutput {
     const parsed = JSON.parse(jsonStr);
 
     // Validate required fields
+    if (
+      typeof parsed.bookTitle !== "string" ||
+      parsed.bookTitle.length < 3
+    ) {
+      // Fallback: generate a simple title if missing
+      parsed.bookTitle = `${childName}'s Adventure`;
+    }
     if (
       typeof parsed.storyText !== "string" ||
       parsed.storyText.length < 10
@@ -163,6 +177,7 @@ function parseStoryResponse(response: string): StoryGenerationOutput {
     }
 
     return {
+      bookTitle: parsed.bookTitle.trim(),
       storyText: parsed.storyText.trim(),
       illustrationPrompt: parsed.illustrationPrompt.trim(),
     };

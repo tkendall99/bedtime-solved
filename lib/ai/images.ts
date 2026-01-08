@@ -101,6 +101,7 @@ This character sheet will be used as a reference to maintain consistency across 
 
 /**
  * Generate the book cover image.
+ * NOTE: The image should NOT contain any text - title will be overlaid programmatically.
  *
  * @param input - Character sheet and book details
  * @returns Base64-encoded cover image
@@ -125,14 +126,19 @@ SCENE:
 - The child looks confident, excited, ready for adventure
 
 COMPOSITION:
-- Character prominently centered
-- Leave space at top for title text
+- Character prominently centered, slightly below center
+- Leave generous empty space at the TOP for title (about 15-20% of image height)
+- The top area should be a clean, uncluttered background (sky, gradient, or soft color)
 - Magical, inviting atmosphere
 - Eye-catching, makes you want to read the book
 
 ${BASE_STYLE}
 
-CRITICAL: The character MUST match the provided reference sheet exactly - same face, hair, features.
+CRITICAL REQUIREMENTS:
+1. The character MUST match the provided reference sheet exactly - same face, hair, features.
+2. DO NOT include ANY text, letters, words, or writing in the image.
+3. NO title text, NO author name, NO words of any kind.
+4. The image should be purely visual - text will be added separately.
 `.trim();
 
   const imageBase64 = await generateImage(
