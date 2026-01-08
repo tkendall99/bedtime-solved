@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.5] - 2026-01-08
+
+### Fixed - Toast Notifications Not Displaying
+
+**Issue:** Form errors were being caught and toast.error() was called, but no toast appeared on screen. User saw form spinning then stopping with no feedback.
+
+#### Root Cause
+- `<Toaster />` component from sonner was never added to the app layout
+- Toast calls worked but had nowhere to render
+
+#### Fix
+- Added `<Toaster richColors position="top-center" />` to `app/layout.tsx`
+- Error messages now properly display to users
+
+---
+
 ## [0.4.4] - 2026-01-08
 
 ### Fixed - Content Safety and Title Styling
