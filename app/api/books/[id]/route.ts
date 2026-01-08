@@ -96,7 +96,7 @@ async function getPreviewData(
     // Fetch page 1 data
     const { data: page1, error: page1Error } = await supabase
       .from("book_pages")
-      .select("story_text, illustration_path")
+      .select("text_content, image_path")
       .eq("book_id", bookId)
       .eq("page_number", 1)
       .single();
@@ -113,10 +113,10 @@ async function getPreviewData(
             .from("images")
             .createSignedUrl(coverImagePath, SIGNED_URL_EXPIRY)
         : Promise.resolve({ data: null, error: null }),
-      page1.illustration_path
+      page1.image_path
         ? supabase.storage
             .from("images")
-            .createSignedUrl(page1.illustration_path, SIGNED_URL_EXPIRY)
+            .createSignedUrl(page1.image_path, SIGNED_URL_EXPIRY)
         : Promise.resolve({ data: null, error: null }),
     ]);
 
@@ -124,12 +124,12 @@ async function getPreviewData(
     if (
       !coverUrlResult.data?.signedUrl ||
       !page1ImageResult.data?.signedUrl ||
-      !page1.story_text
+      !page1.text_content
     ) {
       console.error("Missing preview data:", {
         hasCoverUrl: !!coverUrlResult.data?.signedUrl,
         hasPage1ImageUrl: !!page1ImageResult.data?.signedUrl,
-        hasStoryText: !!page1.story_text,
+        hasTextContent: !!page1.text_content,
       });
       return null;
     }
@@ -138,7 +138,7 @@ async function getPreviewData(
       title,
       coverUrl: coverUrlResult.data.signedUrl,
       page1ImageUrl: page1ImageResult.data.signedUrl,
-      page1Text: page1.story_text,
+      page1Text: page1.text_content,
     };
   } catch (error) {
     console.error("Error generating preview data:", error);

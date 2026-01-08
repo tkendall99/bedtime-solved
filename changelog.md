@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.2] - 2026-01-08
+
+### Fixed - Preview Images Not Loading
+
+**Issue:** Preview page showed "couldn't load preview images" error even though generation succeeded.
+
+**Root Cause:** The API route `app/api/books/[id]/route.ts` was querying the wrong column names from the `book_pages` table.
+
+**Fix:** Updated column names to match the actual schema:
+- `story_text` → `text_content`
+- `illustration_path` → `image_path`
+
+---
+
 ## [0.5.1] - 2026-01-08
 
 ### Fixed - Edge Function CPU Timeout
