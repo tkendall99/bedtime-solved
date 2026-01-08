@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.3] - 2026-01-08
+
+### Fixed - JSON Parse Error in Story Generation
+
+**Issue:** Edge Function failed with "Unexpected token '\`'" error when generating story text.
+
+**Root Cause:** The LLM (xiaomi/mimo-v2-flash:free) sometimes returns JSON wrapped in markdown code blocks:
+```
+```json
+{"title": "...", "page1Text": "..."}
+```
+```
+
+**Fix:** Added `extractJson()` helper function that strips markdown code blocks before parsing the JSON response.
+
+---
+
 ## [0.5.2] - 2026-01-08
 
 ### Fixed - Preview Images Not Loading

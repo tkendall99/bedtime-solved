@@ -59,6 +59,20 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// Helper to extract JSON from LLM response (handles markdown code blocks)
+function extractJson(content: string): string {
+  // Remove markdown code blocks if present
+  let cleaned = content.trim();
+
+  // Handle ```json ... ``` or ``` ... ```
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    cleaned = codeBlockMatch[1].trim();
+  }
+
+  return cleaned;
+}
+
 // Generate story text using LLM
 async function generateStoryText(
   childName: string,
@@ -123,7 +137,12 @@ Return ONLY valid JSON, no other text.`;
     throw new Error("No response from story generation");
   }
 
-  const parsed = JSON.parse(content);
+  // Extract JSON from potential markdown code blocks
+  const jsonString = extractJson(content);
+  console.log("[Story] Raw response:", content.substring(0, 200));
+  console.log("[Story] Extracted JSON:", jsonString.substring(0, 200));
+
+  const parsed = JSON.parse(jsonString);
   console.log("[Story] Generated title:", parsed.title);
   return { title: parsed.title, page1Text: parsed.page1Text };
 }
