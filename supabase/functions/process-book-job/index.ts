@@ -529,13 +529,30 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Edge Function] Claimed job:", jobId);
 
-    // Process the job
-    const result = await processJob(jobId);
+    // Process the job in the background (don't await)
+    // EdgeRuntime.waitUntil keeps the function alive after response is sent
+    const processingPromise = processJob(jobId)
+      .then((result) => {
+        console.log("[Edge Function] Job completed:", result);
+      })
+      .catch((error) => {
+        console.error("[Edge Function] Job failed:", error);
+      });
 
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    // Tell Deno to keep running until processing completes
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(processingPromise);
+    }
+
+    // Return immediately - processing continues in background
+    return new Response(
+      JSON.stringify({
+        message: "Job processing started",
+        jobId: jobId,
+      }),
+      { status: 202, headers: { "Content-Type": "application/json" } }
+    );
   } catch (error) {
     console.error("[Edge Function] Error:", error);
     return new Response(
