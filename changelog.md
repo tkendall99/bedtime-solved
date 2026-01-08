@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.1] - 2026-01-08
+
+### Added - Preview Page UI
+
+**Feature:** Display generated book preview when status is `preview_ready`
+
+#### New Component
+- `components/create/BookPreviewCard.tsx` - Magical storybook preview display
+  - Cover image with realistic book styling (spine shadow, page edges, 3D effect)
+  - Open book spread with page 1 illustration and story text
+  - Fraunces font for story text with decorative drop cap
+  - Image loading states with skeleton placeholders
+  - Responsive design (stacked mobile, side-by-side desktop)
+  - Subtle animations for delight (fade-in, floating sparkles)
+  - "Continue to Checkout" CTA button
+
+#### Preview Page Updates
+- Added preview state to capture API response data
+- Renders BookPreviewCard when status is `preview_ready`
+- Fallback UI if preview images fail to load
+
 ## [0.4.0] - 2026-01-07
 
 ### Added - Generation Worker v1 (Character Sheet + Preview Cover/Page1)
