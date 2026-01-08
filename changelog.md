@@ -7,9 +7,14 @@
 **Feature:** Jobs now start automatically when a book is created
 
 #### Changes
-- `POST /api/books` now triggers job processing in background (fire-and-forget)
+- `POST /api/books` now triggers job processing using Next.js `after()` API
+- Background work runs after response is sent but function stays alive on Vercel
 - No manual intervention needed - generation starts immediately after book creation
 - Users see the generating stepper, then preview appears automatically when ready
+
+#### Technical Note
+- Initial fire-and-forget implementation didn't work on Vercel serverless (function terminated before fetch completed)
+- Fixed by using `after()` from `next/server` which schedules work post-response while keeping the function alive
 
 ---
 

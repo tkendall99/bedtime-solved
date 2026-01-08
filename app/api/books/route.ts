@@ -1,35 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseCreateBookFormData } from "@/lib/validators/createBookApi";
 import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
 import type { CreateBookResponse, ApiError } from "@/lib/types/database";
 
 /**
- * Trigger job processing in background (fire-and-forget).
- * Makes a POST request to the job processor endpoint without waiting for completion.
- * Errors are logged but don't affect the caller.
+ * Trigger job processing in background.
+ * Makes a POST request to the job processor endpoint.
+ * Uses Next.js `after()` to run after the response is sent.
  */
-function triggerJobProcessing(request: NextRequest): void {
-  // Build the URL for the job processor endpoint
-  const url = new URL("/api/admin/jobs/process-next", request.url);
+async function triggerJobProcessing(baseUrl: string): Promise<void> {
+  const url = new URL("/api/admin/jobs/process-next", baseUrl);
 
-  // Fire off the request without awaiting - true fire-and-forget
-  fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-    .then((response) => {
-      if (response.ok) {
-        console.log("[Background] Job processing triggered successfully");
-      } else {
-        console.error("[Background] Job processing trigger failed:", response.status);
-      }
-    })
-    .catch((error) => {
-      console.error("[Background] Failed to trigger job processing:", error);
+  try {
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
+
+    if (response.ok) {
+      console.log("[Background] Job processing triggered successfully");
+    } else {
+      console.error("[Background] Job processing trigger failed:", response.status);
+    }
+  } catch (error) {
+    console.error("[Background] Failed to trigger job processing:", error);
+  }
 }
 
 /**
@@ -163,9 +161,12 @@ export async function POST(
 
     console.log(`Created job for book: ${bookId}`);
 
-    // 6. Trigger job processing in background (fire-and-forget)
-    // This starts the AI generation without blocking the response
-    triggerJobProcessing(request);
+    // 6. Schedule job processing to run after response is sent
+    // Uses Next.js after() to keep the function alive for background work
+    const baseUrl = request.url;
+    after(async () => {
+      await triggerJobProcessing(baseUrl);
+    });
 
     // 7. Return success with bookId immediately
     // bookId is guaranteed to be non-null at this point since we set it after insert
