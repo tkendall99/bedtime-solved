@@ -93,6 +93,8 @@ async function getPreviewData(
   title: string
 ): Promise<BookPreview | null> {
   try {
+    console.log("[Preview] getPreviewData called:", { bookId, coverImagePath, title });
+
     // Fetch page 1 data
     const { data: page1, error: page1Error } = await supabase
       .from("book_pages")
@@ -101,8 +103,10 @@ async function getPreviewData(
       .eq("page_number", 1)
       .single();
 
+    console.log("[Preview] Page 1 query result:", { page1, page1Error });
+
     if (page1Error || !page1) {
-      console.error("Error fetching page 1:", page1Error);
+      console.error("[Preview] Error fetching page 1:", page1Error);
       return null;
     }
 
@@ -120,16 +124,25 @@ async function getPreviewData(
         : Promise.resolve({ data: null, error: null }),
     ]);
 
+    console.log("[Preview] Signed URL results:", {
+      coverUrlResult: { error: coverUrlResult.error, hasData: !!coverUrlResult.data?.signedUrl },
+      page1ImageResult: { error: page1ImageResult.error, hasData: !!page1ImageResult.data?.signedUrl },
+      coverImagePath,
+      page1ImagePath: page1.image_path,
+    });
+
     // Ensure we have all required data
     if (
       !coverUrlResult.data?.signedUrl ||
       !page1ImageResult.data?.signedUrl ||
       !page1.text_content
     ) {
-      console.error("Missing preview data:", {
+      console.error("[Preview] Missing preview data:", {
         hasCoverUrl: !!coverUrlResult.data?.signedUrl,
         hasPage1ImageUrl: !!page1ImageResult.data?.signedUrl,
         hasTextContent: !!page1.text_content,
+        coverError: coverUrlResult.error,
+        page1Error: page1ImageResult.error,
       });
       return null;
     }
