@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.1] - 2026-01-08
+
+### Fixed - Edge Function CPU Timeout
+
+**Issue:** Supabase Edge Functions have CPU time limits. Generating multiple images in one invocation exceeded the limit, causing "CPU Time exceeded" errors.
+
+#### Solution: Step-Based Processing
+Each image generation now runs in a separate Edge Function invocation:
+- Step 1: `character_sheet` - Generate character reference from photo
+- Step 2: `page1_text` - Generate story text and title
+- Step 3: `cover_image` - Generate book cover illustration
+- Step 4: `page1_image` - Generate page 1 illustration
+- Step 5: `complete` - Mark job as complete
+
+After each step completes, the function calls itself to continue processing the next step.
+
+**Database Changes:**
+- Updated `book_jobs.step` constraint to allow new step values
+- Migrated existing jobs from old step names to new ones
+
+---
+
 ## [0.5.0] - 2026-01-08
 
 ### Added - Supabase Edge Function for Job Processing
