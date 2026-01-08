@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.4] - 2026-01-08
+
+### Fixed - Content Safety and Title Styling
+
+#### Content Guardrails
+- Added strict content safety rules to story generation
+- Blocked bathroom humor, crude language, scary content, inappropriate themes
+- "Funny" tone now generates Pixar-style humor (clever/charming, never crude)
+- Explicit list of banned content types in system prompt
+
+#### Improved Title Typography
+- Storybook-style hand-painted typography effect
+- Rich terracotta brown color (#8B4513)
+- Multi-layered shadows for depth (cream highlight, tan mid-tone, dark shadow, ambient glow)
+- Heavier font weight (font-black) for chunky storybook feel
+- Subtle stroke effect for painted edge appearance
+
+---
+
 ## [0.4.3] - 2026-01-08
 
 ### Fixed - Book Titles and Cover Text

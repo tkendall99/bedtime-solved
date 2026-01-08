@@ -43,10 +43,24 @@ const TONE_DESCRIPTIONS: Record<Tone, string> = {
   gentle:
     "Warm, soft, and comforting. Use soothing language that creates a safe, cozy atmosphere. Perfect for bedtime.",
   funny:
-    "Playful, silly, and fun. Include light humor, funny situations, and amusing descriptions that make children giggle.",
+    "Playful, whimsical, and fun. Include wordplay, amusing situations, and delightful surprises. Think Pixar humor - clever and charming, never crude.",
   brave:
     "Adventurous and empowering. The child faces challenges with courage. Use exciting action words and triumphant moments.",
 };
+
+// Content safety guardrails - CRITICAL for children's content
+const CONTENT_GUARDRAILS = `
+CRITICAL CONTENT RULES - YOU MUST FOLLOW THESE:
+- This is for YOUNG CHILDREN - content must be 100% family-friendly
+- NO bathroom humor (no farts, poop, pee, underwear, toilets, bodily functions)
+- NO mean behavior, bullying, or name-calling
+- NO scary content (monsters, death, violence, darkness)
+- NO inappropriate themes (romance, dating, kissing)
+- NO rude words or crude language of any kind
+- Humor should come from: wordplay, funny situations, silly sounds, unexpected twists, adorable animals
+- Think classic children's books: The Very Hungry Caterpillar, Goodnight Moon, Where the Wild Things Are
+- When in doubt, keep it WHOLESOME and INNOCENT
+`.trim();
 
 function buildSystemPrompt(ageBand: AgeBand): string {
   return `You are a beloved children's book author who writes engaging, age-appropriate stories that children love.
@@ -60,6 +74,8 @@ Your writing style:
 - Create vivid, imaginable scenes
 - End each page with a hook that makes them want more
 - Write in present tense for immediacy
+
+${CONTENT_GUARDRAILS}
 
 IMPORTANT: You must respond ONLY with valid JSON. No markdown, no explanation, just the JSON object.`;
 }

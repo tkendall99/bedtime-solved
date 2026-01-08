@@ -76,13 +76,27 @@ export function BookPreviewCard({ preview, onContinue }: BookPreviewCardProps) {
               )}
             />
 
-            {/* Title Overlay - Programmatic text that's always perfect */}
+            {/* Title Overlay - Storybook-style hand-painted typography */}
             {coverLoaded && (
-              <div className="absolute inset-x-0 top-0 pt-4 sm:pt-6 md:pt-8 px-4 text-center pointer-events-none">
+              <div className="absolute inset-x-0 top-0 pt-3 sm:pt-5 md:pt-6 px-3 sm:px-4 text-center pointer-events-none">
                 <h2
-                  className="font-[family-name:var(--font-fraunces)] text-xl sm:text-2xl md:text-3xl font-bold text-amber-900"
+                  className="font-[family-name:var(--font-fraunces)] text-2xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight"
                   style={{
-                    textShadow: '0 2px 4px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.7)',
+                    // Rich terracotta brown - warm and inviting
+                    color: '#8B4513',
+                    // Layered shadows create hand-painted depth effect
+                    textShadow: `
+                      0 1px 0 rgba(255,248,220,0.8),
+                      0 2px 0 rgba(210,180,140,0.6),
+                      0 3px 0 rgba(139,69,19,0.4),
+                      0 4px 8px rgba(0,0,0,0.15),
+                      0 0 20px rgba(255,250,240,0.5)
+                    `,
+                    // Slight letter spacing for storybook feel
+                    letterSpacing: '0.02em',
+                    // Subtle stroke effect via paint-order
+                    WebkitTextStroke: '0.5px rgba(101,67,33,0.3)',
+                    paintOrder: 'stroke fill',
                   }}
                 >
                   {preview.title}
