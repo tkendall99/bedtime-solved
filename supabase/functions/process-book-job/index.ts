@@ -27,14 +27,14 @@ function createAdminClient() {
   });
 }
 
-// OpenRouter API helper
-async function callOpenRouter(endpoint: string, body: Record<string, unknown>) {
-  const response = await fetch(`https://openrouter.ai/api/v1/${endpoint}`, {
+// OpenRouter API helper - uses chat/completions for both text and images
+async function callOpenRouter(body: Record<string, unknown>) {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://bedtime-solved.vercel.app",
+      "HTTP-Referer": "https://bedtimesolved.com",
       "X-Title": "Bedtime Solved",
     },
     body: JSON.stringify(body),
@@ -46,6 +46,16 @@ async function callOpenRouter(endpoint: string, body: Record<string, unknown>) {
   }
 
   return response.json();
+}
+
+// Helper to convert ArrayBuffer to base64
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // Generate story text using LLM
@@ -100,11 +110,11 @@ RESPONSE FORMAT (JSON):
 
 Return ONLY valid JSON, no other text.`;
 
-  const result = await callOpenRouter("chat/completions", {
-    model: "xiaomi/mimo-vl-7b-flash:free",
+  const result = await callOpenRouter({
+    model: "xiaomi/mimo-v2-flash:free",
     messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
     temperature: 0.8,
+    max_tokens: 1024,
   });
 
   const content = result.choices?.[0]?.message?.content;
@@ -125,17 +135,18 @@ async function generateCharacterSheet(
 ): Promise<string> {
   console.log("[CharSheet] Generating character sheet...");
 
-  // Get signed URL for source photo
-  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+  // Download source photo and convert to base64
+  const { data: photoData, error: photoError } = await supabase.storage
     .from("uploads")
-    .createSignedUrl(sourcePhotoPath, 3600);
+    .download(sourcePhotoPath);
 
-  if (signedUrlError || !signedUrlData?.signedUrl) {
-    throw new Error(`Failed to get signed URL for source photo: ${signedUrlError?.message}`);
+  if (photoError || !photoData) {
+    throw new Error(`Failed to download source photo: ${photoError?.message}`);
   }
 
-  const sourcePhotoUrl = signedUrlData.signedUrl;
-  console.log("[CharSheet] Got source photo URL");
+  const photoBuffer = await photoData.arrayBuffer();
+  const photoBase64 = arrayBufferToBase64(photoBuffer);
+  console.log("[CharSheet] Source photo loaded, size:", photoBuffer.byteLength);
 
   const prompt = `Create a children's storybook character reference sheet based on this child's photo.
 Style: Warm, friendly Pixar/Disney-style illustration. Soft features, expressive eyes, gentle smile.
@@ -143,32 +154,54 @@ Show: Front view portrait only, simple background, consistent lighting.
 Important: Capture the child's likeness (hair color, skin tone, features) in illustration form.
 Keep it: Wholesome, age-appropriate, warm color palette suitable for a bedtime story.`;
 
-  const result = await callOpenRouter("images/generations", {
+  // Use chat/completions with image modality
+  const result = await callOpenRouter({
     model: "bytedance-seed/seedream-4.5",
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024",
-    image: sourcePhotoUrl,
-    strength: 0.65,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: `data:image/png;base64,${photoBase64}` },
+          },
+          { type: "text", text: prompt },
+        ],
+      },
+    ],
+    modalities: ["image", "text"],
   });
 
-  const imageUrl = result.data?.[0]?.url;
-  if (!imageUrl) {
-    throw new Error("No image URL in character sheet generation response");
+  // Extract the image from the response
+  const images = result.choices?.[0]?.message?.images;
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    console.error("[CharSheet] Response structure:", JSON.stringify(result, null, 2).substring(0, 500));
+    throw new Error("No image in character sheet response");
   }
 
-  // Download and upload to storage
-  console.log("[CharSheet] Downloading generated image...");
-  const imageResponse = await fetch(imageUrl);
-  const imageBlob = await imageResponse.blob();
-  const imageBuffer = await imageBlob.arrayBuffer();
+  const imageDataUrl = images[0]?.image_url?.url;
+  if (!imageDataUrl) {
+    throw new Error("No image URL in response");
+  }
+
+  // Extract base64 from data URI
+  const base64Data = imageDataUrl.startsWith("data:")
+    ? imageDataUrl.split(",")[1]
+    : imageDataUrl;
+
+  // Convert base64 to Uint8Array for upload
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
 
   const characterSheetPath = `${bookId}/character_sheet.png`;
   console.log("[CharSheet] Uploading to storage...");
 
   const { error: uploadError } = await supabase.storage
     .from("uploads")
-    .upload(characterSheetPath, imageBuffer, {
+    .upload(characterSheetPath, bytes, {
       contentType: "image/png",
       upsert: true,
     });
@@ -191,41 +224,66 @@ async function generateIllustration(
 ): Promise<string> {
   console.log(`[Image] Generating ${outputFilename}...`);
 
-  // Get signed URL for character sheet
-  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+  // Download character sheet and convert to base64
+  const { data: charData, error: charError } = await supabase.storage
     .from("uploads")
-    .createSignedUrl(characterSheetPath, 3600);
+    .download(characterSheetPath);
 
-  if (signedUrlError || !signedUrlData?.signedUrl) {
-    throw new Error(`Failed to get signed URL for character sheet: ${signedUrlError?.message}`);
+  if (charError || !charData) {
+    throw new Error(`Failed to download character sheet: ${charError?.message}`);
   }
 
-  const result = await callOpenRouter("images/generations", {
+  const charBuffer = await charData.arrayBuffer();
+  const charBase64 = arrayBufferToBase64(charBuffer);
+
+  // Use chat/completions with image modality
+  const result = await callOpenRouter({
     model: "bytedance-seed/seedream-4.5",
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024",
-    image: signedUrlData.signedUrl,
-    strength: 0.5,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: `data:image/png;base64,${charBase64}` },
+          },
+          { type: "text", text: prompt },
+        ],
+      },
+    ],
+    modalities: ["image", "text"],
   });
 
-  const imageUrl = result.data?.[0]?.url;
-  if (!imageUrl) {
+  // Extract the image from the response
+  const images = result.choices?.[0]?.message?.images;
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    console.error(`[Image] Response structure for ${outputFilename}:`, JSON.stringify(result, null, 2).substring(0, 500));
+    throw new Error(`No image in response for ${outputFilename}`);
+  }
+
+  const imageDataUrl = images[0]?.image_url?.url;
+  if (!imageDataUrl) {
     throw new Error(`No image URL in response for ${outputFilename}`);
   }
 
-  // Download and upload
-  console.log(`[Image] Downloading ${outputFilename}...`);
-  const imageResponse = await fetch(imageUrl);
-  const imageBlob = await imageResponse.blob();
-  const imageBuffer = await imageBlob.arrayBuffer();
+  // Extract base64 from data URI
+  const base64Data = imageDataUrl.startsWith("data:")
+    ? imageDataUrl.split(",")[1]
+    : imageDataUrl;
+
+  // Convert base64 to Uint8Array for upload
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
 
   const outputPath = `${bookId}/${outputFilename}`;
   console.log(`[Image] Uploading ${outputFilename} to storage...`);
 
   const { error: uploadError } = await supabase.storage
     .from("images")
-    .upload(outputPath, imageBuffer, {
+    .upload(outputPath, bytes, {
       contentType: "image/png",
       upsert: true,
     });
@@ -423,39 +481,24 @@ Soft, warm lighting suitable for bedtime reading.`;
   } catch (error) {
     console.error(`[Job ${jobId}] ERROR:`, error);
 
-    // Update job with error
+    // Update job with error - mark as failed
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const attempts = (job.attempt_count || 0) + 1;
 
-    if (attempts < 3) {
-      // Retry
-      await supabase
-        .from("book_jobs")
-        .update({
-          status: "queued",
-          attempt_count: attempts,
-          error_message: errorMessage,
-        })
-        .eq("id", jobId);
-    } else {
-      // Mark as failed
-      await supabase
-        .from("book_jobs")
-        .update({
-          status: "failed",
-          attempt_count: attempts,
-          error_message: errorMessage,
-        })
-        .eq("id", jobId);
+    await supabase
+      .from("book_jobs")
+      .update({
+        status: "failed",
+        error_message: errorMessage,
+      })
+      .eq("id", jobId);
 
-      await supabase
-        .from("books")
-        .update({
-          status: BOOK_STATUS.FAILED,
-          error_message: errorMessage,
-        })
-        .eq("id", book.id);
-    }
+    await supabase
+      .from("books")
+      .update({
+        status: BOOK_STATUS.FAILED,
+        error_message: errorMessage,
+      })
+      .eq("id", book.id);
 
     throw error;
   }
