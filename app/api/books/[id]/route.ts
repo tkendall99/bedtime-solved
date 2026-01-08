@@ -98,7 +98,7 @@ async function getPreviewData(
     // Fetch page 1 data
     const { data: page1, error: page1Error } = await supabase
       .from("book_pages")
-      .select("text_content, image_path")
+      .select("story_text, illustration_path")
       .eq("book_id", bookId)
       .eq("page_number", 1)
       .single();
@@ -117,10 +117,10 @@ async function getPreviewData(
             .from("images")
             .createSignedUrl(coverImagePath, SIGNED_URL_EXPIRY)
         : Promise.resolve({ data: null, error: null }),
-      page1.image_path
+      page1.illustration_path
         ? supabase.storage
             .from("images")
-            .createSignedUrl(page1.image_path, SIGNED_URL_EXPIRY)
+            .createSignedUrl(page1.illustration_path, SIGNED_URL_EXPIRY)
         : Promise.resolve({ data: null, error: null }),
     ]);
 
@@ -128,19 +128,19 @@ async function getPreviewData(
       coverUrlResult: { error: coverUrlResult.error, hasData: !!coverUrlResult.data?.signedUrl },
       page1ImageResult: { error: page1ImageResult.error, hasData: !!page1ImageResult.data?.signedUrl },
       coverImagePath,
-      page1ImagePath: page1.image_path,
+      page1ImagePath: page1.illustration_path,
     });
 
     // Ensure we have all required data
     if (
       !coverUrlResult.data?.signedUrl ||
       !page1ImageResult.data?.signedUrl ||
-      !page1.text_content
+      !page1.story_text
     ) {
       console.error("[Preview] Missing preview data:", {
         hasCoverUrl: !!coverUrlResult.data?.signedUrl,
         hasPage1ImageUrl: !!page1ImageResult.data?.signedUrl,
-        hasTextContent: !!page1.text_content,
+        hasTextContent: !!page1.story_text,
         coverError: coverUrlResult.error,
         page1Error: page1ImageResult.error,
       });
@@ -151,7 +151,7 @@ async function getPreviewData(
       title,
       coverUrl: coverUrlResult.data.signedUrl,
       page1ImageUrl: page1ImageResult.data.signedUrl,
-      page1Text: page1.text_content,
+      page1Text: page1.story_text,
     };
   } catch (error) {
     console.error("Error generating preview data:", error);

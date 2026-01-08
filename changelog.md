@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.5] - 2026-01-08
+
+### Fixed - Preview API Column Names (Regression Fix)
+
+**Issue:** Preview page showed "couldn't load preview images" error for ALL books.
+
+**Root Cause:** Version 0.5.2 incorrectly "fixed" column names, swapping them the wrong way:
+- API was using `text_content`, `image_path` (wrong)
+- Schema has `story_text`, `illustration_path` (correct)
+
+**Fix:** Reverted to correct column names in `app/api/books/[id]/route.ts`:
+- `text_content` → `story_text`
+- `image_path` → `illustration_path`
+
+---
+
 ## [0.5.4] - 2026-01-08
 
 ### Fixed - Page Data Insert/Update Logic
