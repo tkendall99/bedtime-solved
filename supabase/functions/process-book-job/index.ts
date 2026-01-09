@@ -2,7 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_SECRET_KEY = Deno.env.get("SERVICE_SECRET_KEY")!;
+// SUPABASE_SERVICE_ROLE_KEY is automatically provided by Supabase Edge Functions
+const SERVICE_SECRET_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY")!;
 
 // Constants - each image gets its own step to avoid CPU timeout
