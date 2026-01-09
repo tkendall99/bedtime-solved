@@ -2,7 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// SUPABASE_SERVICE_ROLE_KEY is automatically provided by Supabase Edge Functions
+const SERVICE_SECRET_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY")!;
 
 // Constants - each image gets its own step to avoid CPU timeout
@@ -23,7 +24,7 @@ const BOOK_STATUS = {
 
 // Create Supabase admin client
 function createAdminClient() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(SUPABASE_URL, SERVICE_SECRET_KEY, {
     auth: { persistSession: false },
   });
 }
@@ -649,7 +650,7 @@ Deno.serve(async (req: Request) => {
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            "Authorization": `Bearer ${SERVICE_SECRET_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ job_id: jobId }),

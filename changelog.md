@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.5.6] - 2026-01-09
+
+### Security - Fix Exposed Service Role Key (GitGuardian Alert)
+
+**Issue:** #9 - The Supabase service role JWT was accidentally committed to the repository in migration `20260108_trigger_edge_function.sql`, triggering a GitGuardian alert.
+
+**Root Cause:** The database trigger function for calling the Edge Function had the service role key hardcoded directly in the SQL instead of using secure secret storage.
+
+**Fix:**
+1. Created new migration `20260109_fix_secret_use_vault.sql` that updates the trigger function to read the service role key from Supabase Vault instead of having it hardcoded
+2. Updated the original migration file to remove the exposed secret from the codebase
+
+**Required Actions (Manual):**
+1. **CRITICAL**: Rotate the service role key in Supabase Dashboard:
+   - Go to Settings > API > Service Role Key > Regenerate
+2. Store the new key in Vault by running this SQL in the Supabase SQL Editor:
+   ```sql
+   SELECT vault.create_secret('your-new-service-role-key', 'service_role_key');
+   ```
+
+**Security Best Practice:** Secrets should always be stored in Supabase Vault and accessed via `vault.decrypted_secrets`, never hardcoded in SQL functions or migrations.
+
+---
+
 ## [0.5.5] - 2026-01-08
 
 ### Fixed - Preview API Column Names (Regression Fix)
