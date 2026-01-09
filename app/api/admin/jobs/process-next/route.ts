@@ -4,19 +4,27 @@
  * Admin endpoint to manually trigger processing of the next queued job.
  * Processes one job per request.
  *
+ * Authentication: Requires ADMIN_API_KEY in Authorization header.
+ * Header format: Authorization: Bearer <ADMIN_API_KEY>
+ *
  * Response:
  * - 200: Job processed (success or failure captured in response)
  * - 204: No jobs pending
+ * - 401: Missing or invalid Authorization header
+ * - 403: Invalid API key
  * - 500: Internal error
- *
- * TODO: Add admin authentication before production use.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { processNextJob, ProcessResult } from "@/server/jobs/processNextJob";
+import { validateAdminApiKey } from "@/lib/auth/apiAuth";
 
 export async function POST(request: NextRequest): Promise<NextResponse<ProcessResult>> {
   console.log("[API] POST /api/admin/jobs/process-next");
+
+  // Validate admin API key
+  const authError = validateAdminApiKey(request);
+  if (authError) return authError as NextResponse<ProcessResult>;
 
   try {
     const result = await processNextJob();

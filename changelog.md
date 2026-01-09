@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.6.0] - 2026-01-09
+
+### Security - Critical API Authentication Fixes
+
+**Issue:** Multiple API endpoints lacked proper authentication, allowing unauthorized access.
+
+**Fixes:**
+
+1. **Admin endpoint authentication** (`/api/admin/jobs/process-next`)
+   - Added API key authentication via `ADMIN_API_KEY` environment variable
+   - Requires `Authorization: Bearer <key>` header
+   - Returns 401/403 for invalid/missing credentials
+
+2. **Path traversal vulnerability** (`/api/uploads/signed-url`)
+   - Added validation for `fileExtension` parameter
+   - Only alphanumeric extensions allowed (prevents `../` attacks)
+
+3. **User authentication on book creation** (`/api/books`)
+   - Added Supabase auth session validation
+   - Books now linked to authenticated user via `user_id` column
+   - Returns 401 for unauthenticated requests
+
+4. **User authentication on signed URL generation** (`/api/uploads/signed-url`)
+   - Added Supabase auth session validation
+   - Prevents unauthorized file uploads
+
+**New Files:**
+- `lib/auth/apiAuth.ts` - Authentication utilities for API routes
+- `.env.example` - Template for required environment variables
+
+**Database Migration:**
+- Added `user_id` column to `books` table (references `auth.users`)
+- Added RLS policies for user-based access control
+- Created index on `user_id` for performance
+
+**Required Actions:**
+1. Set `ADMIN_API_KEY` in Vercel environment variables (generate with `openssl rand -hex 32`)
+2. Ensure Supabase Auth is configured for your app
+3. Migration is auto-applied; existing books will have NULL user_id
+
+---
+
 ## [0.5.6] - 2026-01-09
 
 ### Security - Fix Exposed Service Role Key (GitGuardian Alert)

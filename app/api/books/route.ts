@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { BOOK_STATUS, JOB_STEP } from "@/lib/constants/bookStatus";
 import type { CreateBookResponse, ApiError, AgeBand, Tone } from "@/lib/types/database";
 import { z } from "zod";
+import { validateUserSession } from "@/lib/auth/apiAuth";
 
 // Extend timeout to 60 seconds (requires Vercel Pro plan, otherwise defaults to 10s)
 export const maxDuration = 60;
@@ -27,6 +28,8 @@ const createBookSchema = z.object({
  * Creates a new book record and queues a generation job.
  * Photo must already be uploaded to Supabase Storage (client-side direct upload).
  *
+ * Authentication: Requires valid Supabase user session.
+ *
  * Request: JSON
  * - bookId: string (UUID, matches the upload path)
  * - child_name: string
@@ -45,6 +48,16 @@ export async function POST(
   const log = (msg: string) => console.log(`[API /books] ${msg} (+${Date.now() - startTime}ms)`);
 
   log("Request received");
+
+  // Validate user is authenticated
+  const authResult = await validateUserSession(request);
+  if ("error" in authResult) {
+    log("Authentication failed");
+    return authResult.response;
+  }
+  const userId = authResult.user.id;
+  log(`Authenticated user: ${userId}`);
+
   const supabase = createAdminClient();
 
   try {
@@ -82,12 +95,13 @@ export async function POST(
     }
     log("Photo verified in storage");
 
-    // 3. Insert book row with the provided bookId
+    // 3. Insert book row with the provided bookId and user_id
     log("Inserting book row...");
     const { error: bookError } = await supabase
       .from("books")
       .insert({
         id: bookId,
+        user_id: userId,
         child_name,
         age_band: age_band as AgeBand,
         interests,
