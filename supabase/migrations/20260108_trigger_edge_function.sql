@@ -2,6 +2,8 @@
 CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
 
 -- Create function to trigger Edge Function on new job
+-- NOTE: This migration was updated to remove an accidentally committed secret.
+-- The function now reads from Vault - see 20260109_fix_secret_use_vault.sql
 CREATE OR REPLACE FUNCTION trigger_process_book_job()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -11,15 +13,17 @@ BEGIN
   -- Construct the Edge Function URL
   edge_function_url := 'https://ywedqotuxqkccplappje.supabase.co/functions/v1/process-book-job';
 
-  -- Get service role key from vault (or use directly if not using vault)
-  -- For now, we'll pass the job_id in the body and the Edge Function handles auth internally
+  -- Get service role key from Vault (secure storage)
+  SELECT decrypted_secret INTO service_role_key
+  FROM vault.decrypted_secrets
+  WHERE name = 'service_role_key';
 
   -- Make async HTTP request to Edge Function
   PERFORM net.http_post(
     url := edge_function_url,
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3ZWRxb3R1eHFrY2NwbGFwcGplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzY0NDcxNCwiZXhwIjoyMDgzMjIwNzE0fQ.r7QlvPBTKlxiw4yzzq070Goka_WzvigGbe06fzypMpM'
+      'Authorization', 'Bearer ' || COALESCE(service_role_key, '')
     ),
     body := jsonb_build_object('job_id', NEW.id)
   );
