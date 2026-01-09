@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.1] - 2026-01-09
+
+### Feature - Anonymous Authentication for Preview Flow
+
+**Goal:** Allow users to create book previews without signing in, while maintaining security.
+
+**Implementation:**
+- Added `AuthProvider` component with automatic anonymous sign-in
+- Users get an invisible anonymous session when visiting the app
+- Anonymous users can create previews without manual login
+- When ready to pay, users can convert to permanent account
+
+**New Files:**
+- `lib/auth/AuthProvider.tsx` - Context provider with anonymous auth logic
+
+**Changes:**
+- `app/layout.tsx` - Wrapped app with AuthProvider
+- `components/create/CreateBookForm.tsx` - Added auth-ready state handling
+
+**Required Setup:**
+1. Enable "Anonymous Sign-ins" in Supabase Dashboard:
+   - Go to Authentication > Providers
+   - Enable "Allow anonymous sign-ins"
+
+---
+
 ## [0.6.0] - 2026-01-09
 
 ### Security - Critical API Authentication Fixes

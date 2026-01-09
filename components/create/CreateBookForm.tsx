@@ -39,12 +39,14 @@ import {
   type CreateBookFormData,
 } from "@/lib/validators/createBook";
 import { AGE_BANDS, TONES } from "@/lib/constants/storyOptions";
+import { useRequireAuth } from "@/lib/auth/AuthProvider";
 
 const STORAGE_KEY = "createBookFormData";
 
 export function CreateBookForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { isReady: isAuthReady, isLoading: isAuthLoading } = useRequireAuth();
 
   const form = useForm<CreateBookFormData>({
     resolver: zodResolver(createBookSchema),
@@ -400,13 +402,18 @@ export function CreateBookForm() {
           <Button
             type="submit"
             size="lg"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isAuthReady}
             className="w-full text-base py-6 rounded-full shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
           >
             {isSubmitting ? (
               <>
                 <Spinner className="mr-2" />
                 Creating Preview...
+              </>
+            ) : isAuthLoading ? (
+              <>
+                <Spinner className="mr-2" />
+                Preparing...
               </>
             ) : (
               <>
