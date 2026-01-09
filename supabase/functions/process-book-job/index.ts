@@ -29,8 +29,44 @@ function createAdminClient() {
   });
 }
 
-// OpenRouter API helper - uses chat/completions for both text and images
-async function callOpenRouter(body: Record<string, unknown>) {
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [1000, 2000, 4000]; // ms
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Check if error response is HTML (Cloudflare error page)
+function isHtmlResponse(text: string): boolean {
+  return text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html");
+}
+
+// Extract clean error message from response
+function cleanErrorMessage(status: number, responseText: string): string {
+  if (isHtmlResponse(responseText)) {
+    // Cloudflare or proxy error page
+    if (status === 502 || status === 503 || status === 504) {
+      return `AI service temporarily unavailable (${status}). Please try again in a moment.`;
+    }
+    if (status === 500) {
+      return `AI service error (${status}). Please try again.`;
+    }
+    return `AI service error (${status}). Please try again later.`;
+  }
+
+  // Try to parse JSON error
+  try {
+    const json = JSON.parse(responseText);
+    return json.error?.message || json.message || responseText.substring(0, 200);
+  } catch {
+    // Return truncated text if not JSON
+    return responseText.substring(0, 200);
+  }
+}
+
+// OpenRouter API helper with retry logic
+async function callOpenRouter(body: Record<string, unknown>, attempt = 0): Promise<unknown> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -43,8 +79,19 @@ async function callOpenRouter(body: Record<string, unknown>) {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+    const responseText = await response.text();
+    const isRetryable = response.status === 429 || response.status >= 500;
+
+    // Retry transient errors
+    if (isRetryable && attempt < MAX_RETRIES) {
+      const delay = RETRY_DELAYS[attempt] || 4000;
+      console.log(`[OpenRouter] Request failed (${response.status}), retrying in ${delay}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      await sleep(delay);
+      return callOpenRouter(body, attempt + 1);
+    }
+
+    const cleanMessage = cleanErrorMessage(response.status, responseText);
+    throw new Error(cleanMessage);
   }
 
   return response.json();

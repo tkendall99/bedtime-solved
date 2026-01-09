@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.2] - 2026-01-09
+
+### Fixed - Improved Error Handling for AI Generation
+
+**Issue:** When OpenRouter returned a 502 error with Cloudflare HTML error page, the raw HTML was passed to the user as an error message (ugly and unhelpful).
+
+**Fixes:**
+
+1. **Retry Logic** - Added automatic retry with exponential backoff for transient errors:
+   - 3 retries with delays: 1s, 2s, 4s
+   - Retries on 429 (rate limit) and 5xx errors
+
+2. **HTML Response Detection** - Detects Cloudflare/proxy error pages that return HTML instead of JSON
+
+3. **Clean Error Messages** - User-friendly messages instead of raw HTML:
+   - "AI service temporarily unavailable (502). Please try again in a moment."
+   - "AI service error (500). Please try again."
+
+**Changes:**
+- `supabase/functions/process-book-job/index.ts`:
+  - Added `isHtmlResponse()` helper to detect HTML error pages
+  - Added `cleanErrorMessage()` to format user-friendly errors
+  - Added retry logic to `callOpenRouter()` function
+
+---
+
 ## [0.6.1] - 2026-01-09
 
 ### Feature - Anonymous Authentication for Preview Flow
