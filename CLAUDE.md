@@ -28,6 +28,7 @@ Parents upload a child’s photo + enter name/age/interests → we generate a sh
 - Children’s photos are **sensitive**.
 - Supabase Storage buckets are **private**; files are served via **signed URLs** only.
 - DB tables use **RLS**; no public client access to core tables (server-only via service role).
+- **New tables need explicit grants** in the migration that creates them. Supabase stopped granting new `public` tables to the API roles on 30 Oct 2026, so a table without one gives "permission denied" even to the service role. Grant only the service role, which is all the server uses: `grant select, insert, update, delete on public.<table> to service_role;` (a `serial` id also needs `grant usage on sequence`). Grant nothing to `anon` or `authenticated`.
 - Minimize retention and support deletion flows ASAP.
 
 ## Engineering principles (maintainable + scalable)

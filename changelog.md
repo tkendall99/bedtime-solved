@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.7] - 2026-10-28
+
+### Docs - Explicit grants for new Supabase tables
+
+**Why:** From 30 Oct 2026 Supabase stops granting new tables in `public` to the Data API roles (`anon`, `authenticated`, `service_role`). Existing tables keep their grants, so nothing live changes. A table created after that date without a grant returns "permission denied", even to the service role key the API routes and the Edge Function use.
+
+**Change:** `CLAUDE.md` now says every new table's migration grants the service role what it needs (`grant select, insert, update, delete on public.<table> to service_role;`) and grants nothing to `anon` or `authenticated`, since nothing in the browser reads the database.
+
+**Not changed:** No code or migration. The repo's migrations don't create any tables (`book_jobs`, `books` and the rest were made in the dashboard), so there was nothing to add grants to.
+
 ## [0.5.6] - 2026-01-09
 
 ### Security - Fix Exposed Service Role Key (GitGuardian Alert)
